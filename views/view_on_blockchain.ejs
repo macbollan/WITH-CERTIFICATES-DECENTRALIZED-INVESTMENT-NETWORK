@@ -1,0 +1,10 @@
+<div class="investment-details">
+    <h3>Transaction: <%= investment.transactionHash %></h3>
+    <p><strong>Campaign:</strong> <%= investment.campaignName %> (ID: <%= investment.campaign %></p>
+    <p><strong>Investor:</strong> <%= investment.investorName %> (ID: <%= investment.investor %></p>
+    <p><strong>Amount:</strong> <%= investment.amount %> ETH</p>
+    <p><strong>Tokens:</strong> <%= investment.tokens %> <%= investment.tokenName %></p>
+    <p><strong>Token Value:</strong> <%= investment.tokenValue %> ETH/token</p>
+    <p><strong>Status:</strong> Success (Block #<%= investment.blockNumber %></p>
+    <p><strong>Date:</strong> <%= new Date(investment.timestamp).toLocaleString() %></p>
+</div>

@@ -1,0 +1,983 @@
+<%- include("partials/header.ejs") -%>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= campaign.title %> - Campaign Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --success-color: #4cc9f0;
+            --warning-color: #f8961e;
+            --danger-color: #f72585;
+        }
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+        }
+        .campaign-banner {
+            height: 400px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .campaign-banner::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 150px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        }
+        .campaign-header {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 2;
+            color: white;
+            padding: 2rem;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+        }
+        .campaign-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
+            padding: 2rem;
+            margin-top: -80px;
+            position: relative;
+            z-index: 3;
+        }
+        .progress {
+            height: 12px;
+            border-radius: 10px;
+            background-color: #e9ecef;
+        }
+        .progress-bar {
+            background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+            border-radius: 10px;
+            transition: width 1s ease-in-out;
+        }
+        .token-badge {
+            font-size: 0.8rem;
+            padding: 0.4em 0.8em;
+            font-weight: 600;
+            border-radius: 50px;
+        }
+        .profit-badge { background-color: var(--success-color); color: #000; }
+        .ownership-badge { background-color: var(--primary-color); color: #fff; }
+        .rewards-badge { background-color: var(--warning-color); color: #000; }
+        .hybrid-badge { background-color: #198754; color: #fff; }
+        .token-metadata-card {
+            border-left: 4px solid var(--primary-color);
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        .token-metadata-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .investor-section {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #eee;
+        }
+        .investor-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.05);
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        .investor-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary-color);
+        }
+        .investor-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #fff;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        .token-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        .status-badge {
+            font-size: 0.9rem;
+            padding: 0.5em 1em;
+            border-radius: 50px;
+            font-weight: 600;
+        }
+        .token-type-badge {
+            background-color: #6c757d;
+            color: white;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+            border-radius: 50px;
+        }
+        .investment-form-card {
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            border: none;
+            transition: all 0.3s ease;
+        }
+        .investment-form-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+        .stats-card {
+            border-radius: 12px;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.05);
+            border: none;
+        }
+        .tokenomics-highlight {
+            background: linear-gradient(135deg, rgba(67, 97, 238, 0.1), rgba(76, 201, 240, 0.1));
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .tokenomics-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .tokenomics-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(67, 97, 238, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+        .token-details-tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+        .token-details-tooltip .tooltip-text {
+            visibility: hidden;
+            width: 280px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.85rem;
+            font-weight: normal;
+        }
+        .token-details-tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        .btn-invest {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            padding: 0.75rem 1.5rem;
+        }
+        .btn-invest:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+        }
+        .campaign-description {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #495057;
+        }
+        .owner-section {
+            display: flex;
+            align-items: center;
+            background: rgba(248, 249, 250, 0.7);
+            padding: 1rem;
+            border-radius: 12px;
+            margin: 1.5rem 0;
+            transition: all 0.3s ease;
+        }
+        .owner-section:hover {
+            background: rgba(248, 249, 250, 1);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        .owner-verified {
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+        }
+        .section-title {
+            position: relative;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .section-title:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+            border-radius: 3px;
+        }
+        .token-value-large {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        .token-calculator {
+            background: rgba(248, 249, 250, 0.7);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .token-calculator-result {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            text-align: center;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+        }
+        .edit-modal .modal-dialog {
+            max-width: 800px;
+        }
+        .edit-modal .tab-content {
+            padding: 1.5rem 0;
+        }
+        .token-type-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .token-type-option {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .token-type-option:hover {
+            border-color: #adb5bd;
+        }
+        .token-type-option.active {
+            border-color: var(--primary-color);
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+        .token-type-option input {
+            display: none;
+        }
+        .token-metadata-section {
+            display: none;
+        }
+        .token-metadata-section.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <!-- Campaign Banner with Title -->
+        <div class="campaign-banner" style="background-image: url('<%= campaign.image || '/default-banner.jpg' %>');">
+            <div class="campaign-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h1 class="display-5 fw-bold mb-2"><%= campaign.title %></h1>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="status-badge badge bg-<%= campaign.status === 'active' ? 'success' : campaign.status === 'funded' ? 'primary' : 'secondary' %>">
+                                <%= campaign.status.toUpperCase() %>
+                            </span>
+                            <span class="token-type-badge badge">
+                                <%= campaign.tokenType.toUpperCase() %> TOKEN
+                            </span>
+                            <span class="token-badge badge <%= 
+                                campaign.tokenType === 'profit' ? 'profit-badge' : 
+                                campaign.tokenType === 'ownership' ? 'ownership-badge' :
+                                campaign.tokenType === 'rewards' ? 'rewards-badge' : 'hybrid-badge'
+                            %>">
+                                <%= campaign.tokenSymbol || 'TKN' %>
+                            </span>
+                        </div>
+                    </div>
+                    <% if(currentUser && currentUser._id.equals(campaign.owner._id)) { %>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#editCampaignModal">
+                                <i class="bi bi-pencil"></i> Edit
+                            </button>
+                            <form action="/campaign/<%= campaign._id %>?_method=DELETE"method="POST">
+                                <button type="submit" class="btn btn-outline-light" onclick="return confirm('Are you sure you want to delete this campaign? This action cannot be undone.')">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Campaign Card -->
+        <div class="campaign-card">
+            <div class="row">
+                <!-- Left Column - Campaign Details -->
+                <div class="col-lg-8">
+                    <h3 class="section-title">Campaign Details</h3>
+                    <div class="campaign-description mb-4"><%= campaign.description %></div>
+                    
+                    <!-- Owner Section -->
+                    <div class="owner-section">
+                        <img src="<%= campaign.owner.profilePicture || '/default-avatar.png' %>" 
+                             alt="<%= campaign.owner.username %>" 
+                             class="owner-avatar me-3">
+                        <div>
+                            <h5 class="mb-1">
+                                <a href="/<%= campaign.owner._id %>/users/" class="text-decoration-none">
+                                    <%= campaign.owner.username %> <%= campaign.owner.surname %>
+                                </a>
+                                <span class="owner-verified ms-2">
+                                    <i class="bi bi-patch-check-fill"></i> Verified Creator
+                                </span>
+                            </h5>
+                            <small class="text-muted">Campaign Owner</small>
+                        </div>
+                    </div>
+
+                    <!-- Progress Section -->
+                    <div class="mb-5">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <span class="fw-bold fs-4">$<%= campaign.amountRaised.toLocaleString() %></span>
+                                <span class="text-muted ms-2">raised of $<%= campaign.goalAmount.toLocaleString() %> goal</span>
+                            </div>
+                            <span class="badge bg-light text-dark fs-6">
+                                <%= ((campaign.amountRaised / campaign.goalAmount) * 100).toFixed(2) %>% funded
+                            </span>
+                        </div>
+                        <div class="progress mb-2">
+                            <div class="progress-bar" 
+                                 role="progressbar" 
+                                 style="width: <%= Math.min((campaign.amountRaised / campaign.goalAmount) * 100, 100) %>%" 
+                                 aria-valuenow="<%= (campaign.amountRaised / campaign.goalAmount) * 100 %>">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small">
+                            <span><%= campaign.investors ? campaign.investors.length : 0 %> investors</span>
+                            <span><%= new Date(campaign.timeCreated).toLocaleDateString() %></span>
+                        </div>
+                    </div>
+
+                    <!-- Token Information -->
+                    <div class="tokenomics-highlight">
+                        <h4 class="mb-4"><i class="bi bi-coin me-2"></i>Tokenomics</h4>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="tokenomics-item">
+                                    <div class="tokenomics-icon">
+                                        <i class="bi bi-tag"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">Token Name</h6>
+                                        <p class="mb-0"><%= campaign.tokenName %></p>
+                                    </div>
+                                </div>
+                                <div class="tokenomics-item">
+                                    <div class="tokenomics-icon">
+                                        <i class="bi bi-hash"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">Token Symbol</h6>
+                                        <p class="mb-0"><%= campaign.tokenSymbol %></p>
+                                    </div>
+                                </div>
+                                <div class="tokenomics-item">
+                                    <div class="tokenomics-icon">
+                                        <i class="bi bi-stack"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">Total Supply</h6>
+                                        <p class="mb-0"><%= campaign.totalTokens.toLocaleString() %></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <% if(campaign.tokenType === 'profit') { %>
+                                    <div class="tokenomics-item">
+                                        <div class="tokenomics-icon">
+                                            <i class="bi bi-percent"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">Profit Share 
+                                                <span class="token-details-tooltip">
+                                                    <i class="bi bi-info-circle"></i>
+                                                    <span class="tooltip-text">Total <%= campaign.tokenMetadata.profitSharePercentage %>% of project profits will be distributed among all investors proportionally</span>
+                                                </span>
+                                            </h6>
+                                            <p class="mb-0"><%= campaign.tokenMetadata.profitSharePercentage %>% of <%= campaign.tokenMetadata.profitBase === 'gross' ? 'gross revenue' : 'net profit' %></p>
+                                        </div>
+                                    </div>
+                                    <div class="tokenomics-item">
+                                        <div class="tokenomics-icon">
+                                            <i class="bi bi-calendar-check"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">Distribution</h6>
+                                            <p class="mb-0"><%= campaign.tokenMetadata.profitDistributionFrequency.charAt(0).toUpperCase() + campaign.tokenMetadata.profitDistributionFrequency.slice(1) %></p>
+                                        </div>
+                                    </div>
+                                <% } else if(campaign.tokenType === 'ownership') { %>
+                                    <div class="tokenomics-item">
+                                        <div class="tokenomics-icon">
+                                            <i class="bi bi-pie-chart"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">Ownership 
+                                                <span class="token-details-tooltip">
+                                                    <i class="bi bi-info-circle"></i>
+                                                    <span class="tooltip-text">Total <%= campaign.tokenMetadata.ownershipPercentage %>% equity will be distributed among all investors proportionally</span>
+                                                </span>
+                                            </h6>
+                                            <p class="mb-0"><%= campaign.tokenMetadata.ownershipPercentage %>% of project</p>
+                                        </div>
+                                    </div>
+                                    <div class="tokenomics-item">
+                                        <div class="tokenomics-icon">
+                                            <i class="bi bi-check-circle"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">Voting Rights</h6>
+                                            <p class="mb-0"><%= campaign.tokenMetadata.votingRights ? 'Included' : 'Not included' %></p>
+                                        </div>
+                                    </div>
+                                <% } else if(campaign.tokenType === 'rewards') { %>
+                                    <div class="tokenomics-item">
+                                        <div class="tokenomics-icon">
+                                            <i class="bi bi-gift"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">Rewards</h6>
+                                            <p class="mb-0"><%= campaign.tokenMetadata.rewardDescription.substring(0, 80) %><%= campaign.tokenMetadata.rewardDescription.length > 80 ? '...' : '' %></p>
+                                        </div>
+                                    </div>
+                                <% } else if(campaign.tokenType === 'hybrid') { %>
+                                    <div class="tokenomics-item">
+                                        <div class="tokenomics-icon">
+                                            <i class="bi bi-pie-chart"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">Ownership Per Token 
+                                                <span class="token-details-tooltip">
+                                                    <i class="bi bi-info-circle"></i>
+                                                    <span class="tooltip-text">Each token represents <%= campaign.tokenMetadata.ownershipPerToken %>% ownership in the project</span>
+                                                </span>
+                                            </h6>
+                                            <p class="mb-0"><%= campaign.tokenMetadata.ownershipPerToken %>% per token</p>
+                                        </div>
+                                    </div>
+                                    <div class="tokenomics-item">
+                                        <div class="tokenomics-icon">
+                                            <i class="bi bi-gift"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">Additional Rewards</h6>
+                                            <p class="mb-0"><%= campaign.tokenMetadata.rewardDescription.substring(0, 60) %><%= campaign.tokenMetadata.rewardDescription.length > 60 ? '...' : '' %></p>
+                                        </div>
+                                    </div>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column - Investment Action -->
+                <div class="col-lg-4">
+                    <div class="card investment-form-card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">
+                                <i class="bi bi-currency-dollar me-2"></i>Invest in this Campaign
+                            </h5>
+                            
+                            <% if(campaign.status !== 'active') { %>
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    This campaign is no longer accepting investments.
+                                </div>
+                            <% } else { %>
+                                <form id="investmentForm" action="/campaigns/invest" method="POST">
+                                    <input type="hidden" name="campaignId" value="<%= campaign._id %>">
+                                    
+                                    <div class="mb-3">
+                                        <label for="investmentAmount" class="form-label fw-bold">Investment Amount ($)</label>
+                                        <input type="number" class="form-control form-control-lg" id="investmentAmount" 
+                                               name="amount" min="1" required placeholder="100">
+                                    </div>
+                                    
+                                    <!-- Token Calculator -->
+                                    <div class="token-calculator">
+                                        <div class="d-flex justify-content-between small mb-2">
+                                            <span class="text-muted">You'll receive:</span>
+                                            <span class="text-muted">Token Value:</span>
+                                        </div>
+                                        <div class="token-calculator-result" id="tokenEstimate">
+                                            <% if(campaign.tokenType === 'profit') { %>
+                                                1 <%= campaign.tokenSymbol %> = $1
+                                            <% } else if(campaign.tokenType === 'ownership') { %>
+                                                1 <%= campaign.tokenSymbol %> = $<%= (campaign.goalAmount * (campaign.tokenMetadata.ownershipPercentage/100) / campaign.totalTokens).toFixed(4) %>
+                                            <% } else if(campaign.tokenType === 'rewards') { %>
+                                                Tokens grant rewards
+                                            <% } else if(campaign.tokenType === 'hybrid') { %>
+                                                Each token gives <%= campaign.tokenMetadata.ownershipPerToken %>% + rewards
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="alert alert-info mb-3">
+                                        <small>
+                                            <i class="bi bi-info-circle me-2"></i> 
+                                            <% if(campaign.tokenType === 'profit') { %>
+                                                You'll receive 1 <%= campaign.tokenSymbol %> token for every $1 invested, entitling you to a share of <%= campaign.tokenMetadata.profitSharePercentage %>% of project profits.
+                                            <% } else if(campaign.tokenType === 'ownership') { %>
+                                                Each token represents partial ownership in the project. Total <%= campaign.tokenMetadata.ownershipPercentage %>% equity is being offered.
+                                            <% } else if(campaign.tokenType === 'rewards') { %>
+                                                Tokens grant access to: <%= campaign.tokenMetadata.rewardDescription.substring(0, 60) %>...
+                                            <% } else if(campaign.tokenType === 'hybrid') { %>
+                                                Each token gives <%= campaign.tokenMetadata.ownershipPerToken %>% ownership plus additional rewards.
+                                            <% } %>
+                                        </small>
+                                    </div>
+                                    
+                                    <% if(currentUser) { %>
+                                        <button type="submit" class="btn btn-invest w-100 py-3 fw-bold">
+                                            <i class="bi bi-lightning-charge"></i> INVEST NOW
+                                        </button>
+                                    <% } else { %>
+                                        <a href="/login" class="btn btn-primary w-100 py-3 fw-bold">
+                                            <i class="bi bi-box-arrow-in-right"></i> LOGIN TO INVEST
+                                        </a>
+                                    <% } %>
+                                </form>
+                            <% } %>
+                            
+                            <hr class="my-4">
+                            
+                            <div class="text-center">
+                                <small class="text-muted d-flex align-items-center justify-content-center">
+                                    <i class="bi bi-shield-lock me-2"></i> All investments are secured on the blockchain
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Stats -->
+                    <div class="card stats-card">
+                        <div class="card-body">
+                            <h6 class="card-title mb-3 fw-bold">
+                                <i class="bi bi-graph-up me-2"></i>Campaign Stats
+                            </h6>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="text-muted">
+                                    <i class="bi bi-people me-2"></i>Investors:
+                                </span>
+                                <span class="fw-bold"><%= campaign.investors ? campaign.investors.length : 0 %></span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="text-muted">
+                                    <i class="bi bi-calendar me-2"></i>Created:
+                                </span>
+                                <span><%= new Date(campaign.timeCreated).toLocaleDateString() %></span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">
+                                    <i class="bi bi-clock me-2"></i>Days Left:
+                                </span>
+                                <span>30</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Investors Section -->
+        <div class="investor-section">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="section-title">Recent Investments</h3>
+                <span class="badge bg-primary rounded-pill px-3 py-2">
+                    <i class="bi bi-people me-1"></i> <%= campaign.investments ? campaign.investments.length : 0 %> investors
+                </span>
+            </div>
+            
+            <% if (campaign.investments && campaign.investments.length > 0) { %>
+                <div class="row">
+                    <% campaign.investments.slice(0, 6).forEach(investment => { %>
+                        <div class="col-md-6 mb-3">
+                            <div class="investor-card">
+                                <div class="d-flex align-items-start">
+                                    <img src="<%= investment.investor.profilePicture || '/default-avatar.png' %>" 
+                                         alt="<%= investment.investor.username %>" 
+                                         class="investor-avatar me-3">
+                                    <div class="flex-grow-1">
+                                        <h5 class="mb-1">
+                                            <a href="/<%= investment.investor._id %>/users/" class="text-decoration-none">
+                                                <%= investment.investor.username %> <%= investment.investor.surname %>
+                                            </a>
+                                        </h5>
+                                        <p class="mb-1 text-muted small">
+                                            <i class="bi bi-cash-coin me-1"></i> Invested <strong class="token-value">$<%= investment.amount.toLocaleString() %></strong>
+                                        </p>
+                                        <p class="mb-2 text-muted small">
+                                            <i class="bi bi-coin me-1"></i> Received <strong><%= investment.tokens.toLocaleString() %> <%= campaign.tokenSymbol %></strong>
+                                        </p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">
+                                                <i class="bi bi-clock me-1"></i> <%= new Date(investment.timeCreated).toLocaleString() %>
+                                            </small>
+                                            <a href="/<%= investment.transactionHash %>/blockchain" 
+                                               target="_blank" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-blockchain"></i> View Tx
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+                
+                <% if (campaign.investments.length > 6) { %>
+                    <div class="text-center mt-4">
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-down-circle me-2"></i>Show All Investors
+                        </a>
+                    </div>
+                <% } %>
+            <% } else { %>
+                <div class="card shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-people" style="font-size: 3rem; color: #adb5bd;"></i>
+                        <h4 class="mt-3">No investments yet</h4>
+                        <p class="text-muted">Be the first to invest in this promising campaign!</p>
+                        <% if(campaign.status === 'active') { %>
+                            <a href="#investmentForm" class="btn btn-primary mt-3">
+                                <i class="bi bi-currency-dollar me-2"></i>Invest Now
+                            </a>
+                        <% } %>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Edit Campaign Modal -->
+    <div class="modal fade edit-modal" id="editCampaignModal" tabindex="-1" aria-labelledby="editCampaignModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editCampaignModalLabel">Edit Campaign</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/campaigns/<%=campaign._id%>" method="POST" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <ul class="nav nav-tabs" id="editCampaignTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">Basic Info</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="token-tab" data-bs-toggle="tab" data-bs-target="#token" type="button" role="tab">Token Details</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="media-tab" data-bs-toggle="tab" data-bs-target="#media" type="button" role="tab">Media</button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="editCampaignTabsContent">
+                            <!-- Basic Info Tab -->
+                            <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                                <div class="mb-3">
+                                    <label for="title" class="form-label">Campaign Title</label>
+                                    <input type="text" class="form-control" id="title" name="title" value="<%= campaign.title %>" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="5" required><%= campaign.description %></textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="goalAmount" class="form-label">Goal Amount ($)</label>
+                                        <input type="number" class="form-control" id="goalAmount" name="goalAmount" value="<%= campaign.goalAmount %>" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="status" class="form-label">Status</label>
+                                        <select class="form-select" id="status" name="status">
+                                            <option value="active" <%= campaign.status === 'active' ? 'selected' : '' %>>Active</option>
+                                            <option value="funded" <%= campaign.status === 'funded' ? 'selected' : '' %>>Funded</option>
+                                            <option value="closed" <%= campaign.status === 'closed' ? 'selected' : '' %>>Closed</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Token Details Tab -->
+                            <div class="tab-pane fade" id="token" role="tabpanel">
+                                <div class="mb-3">
+                                    <label for="tokenName" class="form-label">Token Name</label>
+                                    <input type="text" class="form-control" id="tokenName" name="tokenName" value="<%= campaign.tokenName %>" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="tokenSymbol" class="form-label">Token Symbol</label>
+                                    <input type="text" class="form-control" id="tokenSymbol" name="tokenSymbol" value="<%= campaign.tokenSymbol %>" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="totalTokens" class="form-label">Total Tokens</label>
+                                    <input type="number" class="form-control" id="totalTokens" name="totalTokens" value="<%= campaign.totalTokens %>" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Token Type</label>
+                                    <div class="token-type-selector">
+                                        <label class="token-type-option <%= campaign.tokenType === 'profit' ? 'active' : '' %>">
+                                            <input type="radio" name="tokenType" value="profit" <%= campaign.tokenType === 'profit' ? 'checked' : '' %> required>
+                                            <i class="bi bi-percent d-block" style="font-size: 1.5rem;"></i>
+                                            <span>Profit Sharing</span>
+                                        </label>
+                                        <label class="token-type-option <%= campaign.tokenType === 'ownership' ? 'active' : '' %>">
+                                            <input type="radio" name="tokenType" value="ownership" <%= campaign.tokenType === 'ownership' ? 'checked' : '' %>>
+                                            <i class="bi bi-pie-chart d-block" style="font-size: 1.5rem;"></i>
+                                            <span>Ownership</span>
+                                        </label>
+                                        <label class="token-type-option <%= campaign.tokenType === 'rewards' ? 'active' : '' %>">
+                                            <input type="radio" name="tokenType" value="rewards" <%= campaign.tokenType === 'rewards' ? 'checked' : '' %>>
+                                            <i class="bi bi-gift d-block" style="font-size: 1.5rem;"></i>
+                                            <span>Rewards</span>
+                                        </label>
+                                        <label class="token-type-option <%= campaign.tokenType === 'hybrid' ? 'active' : '' %>">
+                                            <input type="radio" name="tokenType" value="hybrid" <%= campaign.tokenType === 'hybrid' ? 'checked' : '' %>>
+                                            <i class="bi bi-collection d-block" style="font-size: 1.5rem;"></i>
+                                            <span>Hybrid</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Profit Sharing Metadata -->
+                                <div class="token-metadata-section <%= campaign.tokenType === 'profit' ? 'active' : '' %>" id="profitMetadata">
+                                    <h6 class="mb-3">Profit Sharing Details</h6>
+                                    <div class="mb-3">
+                                        <label for="profitSharePercentage" class="form-label">Profit Share Percentage</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="profitSharePercentage" name="tokenMetadata[profitSharePercentage]" 
+                                                   value="<%= campaign.tokenType === 'profit' ? campaign.tokenMetadata.profitSharePercentage : '' %>">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Profit Base</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="tokenMetadata[profitBase]" id="grossProfit" value="gross"
+                                                <%= campaign.tokenType === 'profit' && campaign.tokenMetadata.profitBase === 'gross' ? 'checked' : '' %>>
+                                            <label class="form-check-label" for="grossProfit">Gross Revenue</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="tokenMetadata[profitBase]" id="netProfit" value="net"
+                                                <%= campaign.tokenType === 'profit' && campaign.tokenMetadata.profitBase === 'net' ? 'checked' : '' %>>
+                                            <label class="form-check-label" for="netProfit">Net Profit</label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="profitDistributionFrequency" class="form-label">Distribution Frequency</label>
+                                        <select class="form-select" id="profitDistributionFrequency" name="tokenMetadata[profitDistributionFrequency]">
+                                            <option value="monthly" <%= campaign.tokenType === 'profit' && campaign.tokenMetadata.profitDistributionFrequency === 'monthly' ? 'selected' : '' %>>Monthly</option>
+                                            <option value="quarterly" <%= campaign.tokenType === 'profit' && campaign.tokenMetadata.profitDistributionFrequency === 'quarterly' ? 'selected' : '' %>>Quarterly</option>
+                                            <option value="annually" <%= campaign.tokenType === 'profit' && campaign.tokenMetadata.profitDistributionFrequency === 'annually' ? 'selected' : '' %>>Annually</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <!-- Ownership Metadata -->
+                                <div class="token-metadata-section <%= campaign.tokenType === 'ownership' ? 'active' : '' %>" id="ownershipMetadata">
+                                    <h6 class="mb-3">Ownership Details</h6>
+                                    <div class="mb-3">
+                                        <label for="ownershipPercentage" class="form-label">Ownership Percentage</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="ownershipPercentage" name="tokenMetadata[ownershipPercentage]" 
+                                                   value="<%= campaign.tokenType === 'ownership' ? campaign.tokenMetadata.ownershipPercentage : '' %>">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="votingRights" name="tokenMetadata[votingRights]"
+                                            <%= campaign.tokenType === 'ownership' && campaign.tokenMetadata.votingRights ? 'checked' : '' %>>
+                                        <label class="form-check-label" for="votingRights">Include Voting Rights</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Rewards Metadata -->
+                                <div class="token-metadata-section <%= campaign.tokenType === 'rewards' ? 'active' : '' %>" id="rewardsMetadata">
+                                    <h6 class="mb-3">Rewards Details</h6>
+                                    <div class="mb-3">
+                                        <label for="rewardDescription" class="form-label">Reward Description</label>
+                                        <textarea class="form-control" id="rewardDescription" name="tokenMetadata[rewardDescription]" rows="3"><%= campaign.tokenType === 'rewards' ? campaign.tokenMetadata.rewardDescription : '' %></textarea>
+                                    </div>
+                                </div>
+                                
+                                <!-- Hybrid Metadata -->
+                                <div class="token-metadata-section <%= campaign.tokenType === 'hybrid' ? 'active' : '' %>" id="hybridMetadata">
+                                    <h6 class="mb-3">Hybrid Token Details</h6>
+                                    <div class="mb-3">
+                                        <label for="ownershipPerToken" class="form-label">Ownership Per Token</label>
+                                        <div class="input-group">
+                                            <input type="number" step="0.0001" class="form-control" id="ownershipPerToken" name="tokenMetadata[ownershipPerToken]" 
+                                                   value="<%= campaign.tokenType === 'hybrid' ? campaign.tokenMetadata.ownershipPerToken : '' %>">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="hybridRewardDescription" class="form-label">Additional Reward Description</label>
+                                        <textarea class="form-control" id="hybridRewardDescription" name="tokenMetadata[rewardDescription]" rows="3"><%= campaign.tokenType === 'hybrid' ? campaign.tokenMetadata.rewardDescription : '' %></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Media Tab -->
+                            <div class="tab-pane fade" id="media" role="tabpanel">
+                                <div class="mb-3">
+                                    <label for="image" class="form-label">Campaign Banner Image</label>
+                                    <input class="form-control" type="file" id="image" name="image" accept="image/*">
+                                    <% if(campaign.image) { %>
+                                        <div class="mt-2">
+                                            <small>Current Image:</small>
+                                            <img src="<%= campaign.image %>" alt="Current banner" class="img-thumbnail mt-2" style="max-height: 100px;">
+                                        </div>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Calculate and display estimated tokens when amount changes
+        document.getElementById('investmentAmount')?.addEventListener('input', function(e) {
+            const amount = parseFloat(e.target.value);
+            const tokenEstimate = document.getElementById('tokenEstimate');
+            
+            if (!isNaN(amount) && amount > 0) {
+                // Calculate tokens based on campaign type
+                <% if(campaign.tokenType === 'profit') { %>
+                    const tokens = amount; // 1 token per $1
+                    tokenEstimate.innerHTML = `${tokens.toLocaleString()} <%= campaign.tokenSymbol %> tokens`;
+                <% } else if(campaign.tokenType === 'ownership') { %>
+                    const tokenValue = <%= (campaign.goalAmount * (campaign.tokenMetadata.ownershipPercentage/100) / campaign.totalTokens) %>;
+                    const tokens = amount / tokenValue;
+                    tokenEstimate.innerHTML = `${tokens.toFixed(2).toLocaleString()} <%= campaign.tokenSymbol %> tokens (${(tokens * <%= campaign.tokenMetadata.ownershipPercentage %> / <%= campaign.totalTokens %>).toFixed(4)}% ownership)`;
+                <% } else if(campaign.tokenType === 'rewards') { %>
+                    tokenEstimate.innerHTML = `${amount.toLocaleString()} <%= campaign.tokenSymbol %> tokens`;
+                <% } else if(campaign.tokenType === 'hybrid') { %>
+                    tokenEstimate.innerHTML = `${amount.toLocaleString()} <%= campaign.tokenSymbol %> tokens (${(amount * <%= campaign.tokenMetadata.ownershipPerToken %>).toFixed(4)}% total ownership)`;
+                <% } %>
+            } else {
+                // Reset to default message
+                <% if(campaign.tokenType === 'profit') { %>
+                    tokenEstimate.innerHTML = `1 <%= campaign.tokenSymbol %> = $1`;
+                <% } else if(campaign.tokenType === 'ownership') { %>
+                    tokenEstimate.innerHTML = `1 <%= campaign.tokenSymbol %> = $<%= (campaign.goalAmount * (campaign.tokenMetadata.ownershipPercentage/100) / campaign.totalTokens).toFixed(4) %>`;
+                <% } else if(campaign.tokenType === 'rewards') { %>
+                    tokenEstimate.innerHTML = `Tokens grant rewards`;
+                <% } else if(campaign.tokenType === 'hybrid') { %>
+                    tokenEstimate.innerHTML = `Each token gives <%= campaign.tokenMetadata.ownershipPerToken %>% + rewards`;
+                <% } %>
+            }
+        });
+
+        // Form validation
+        document.getElementById('investmentForm')?.addEventListener('submit', function(e) {
+            const amountInput = document.getElementById('investmentAmount');
+            if (!amountInput.value || parseFloat(amountInput.value) <= 0) {
+                e.preventDefault();
+                amountInput.classList.add('is-invalid');
+                return false;
+            }
+            return true;
+        });
+
+        // Token type selector functionality for edit modal
+        document.querySelectorAll('input[name="tokenType"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Hide all metadata sections
+                document.querySelectorAll('.token-metadata-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                
+                // Show the selected metadata section
+                const selectedType = this.value;
+                document.getElementById(`${selectedType}Metadata`).classList.add('active');
+                
+                // Update active class on options
+                document.querySelectorAll('.token-type-option').forEach(option => {
+                    option.classList.remove('active');
+                });
+                this.closest('.token-type-option').classList.add('active');
+            });
+        });
+
+        // Initialize the edit modal with the correct token type selected
+        document.addEventListener('DOMContentLoaded', function() {
+            const editModal = document.getElementById('editCampaignModal');
+            if (editModal) {
+                editModal.addEventListener('show.bs.modal', function() {
+                    // Ensure the correct token metadata section is visible
+                    const currentTokenType = '<%= campaign.tokenType %>';
+                    document.querySelectorAll('.token-metadata-section').forEach(section => {
+                        section.classList.remove('active');
+                    });
+                    document.getElementById(`${currentTokenType}Metadata`).classList.add('active');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+
+<%- include("partials/footer.ejs") -%>

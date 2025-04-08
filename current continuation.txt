@@ -1,0 +1,78 @@
+Here's a comprehensive continuity message you can paste at the start of our next chat to seamlessly continue development:
+
+---
+
+**Project Continuity Bridge**  
+*(Copy this entire message to our next chat to resume exactly where we left off)*  
+
+### **Current Project Status**  
+**Hybrid Fiat/Blockchain Crowdfunding Platform**  
+**Current Phase**: Frontend-Blockchain Integration  
+**Last Completed**:  
+✅ Enhanced `campaigns.ejs` with:  
+- ERC-1155 token type visualization (profit/ownership/hybrid)  
+- Functional investment calculator  
+- Fixed modal interactions (create/edit/invest)  
+- PDF certificate preview placeholder  
+
+### **Immediate Next Steps**  
+```mermaid
+flowchart LR
+    A[Edit profile.ejs] --> B[Token Portfolio Dashboard]
+    B --> C[Certificate Generation]
+    C --> D[Campaign Details Page]
+```
+
+### **Files Needed Next**  
+Please share these files in our next chat:  
+1. `profile.ejs` *(for token holdings display)*  
+2. `campaign_details.ejs` *(for investment flow completion)*  
+3. `User.model.js` *(verify wallet address field exists)*  
+
+### **Critical Requirements**  
+1. **Profile Page Must Show**:  
+   - Token balances with current valuations  
+   - Certificate download buttons  
+   - Wallet connection status  
+
+2. **Technical Specifications**:  
+```javascript
+// Expected User Model Structure
+{
+  walletAddress: { type: String, required: false }, // For crypto-savvy users
+  fiatWallet: { type: Number, default: 0 }, // Track fiat balance
+  kycVerified: { type: Boolean, default: false }
+}
+```
+
+3. **UI Components to Build**:  
+   - Token transfer interface  
+   - PDF certificate template with:  
+     - QR code linking to blockchain transaction  
+     - Visual ownership percentage gauge  
+     - Legal disclaimer section  
+
+### **Key Problems to Solve Together**  
+1. How to handle non-crypto users (fiat-only flow)  
+2. Best PDF generation approach:  
+   - Server-side (PDFKit/PDFMake) vs Client-side (jsPDF)  
+3. Wallet connection UX for beginners  
+
+### **What to Expect in Return**  
+When you share your files, I'll provide:  
+1. **Complete Code Solutions** with:  
+   - Line-by-line explanations  
+   - Responsive design considerations  
+2. **Test Data** for:  
+   - Token portfolio simulation  
+   - Certificate generation testing  
+3. **Security Checklist** covering:  
+   - XSS prevention in EJS templates  
+   - Secure PDF download endpoints  
+
+**Tip**: Save this as `continue_crowdfunding.txt` for easy pasting.  
+**When ready**, just paste this message + your files and we'll continue immediately!  
+
+--- 
+
+This message contains all the technical context needed to maintain perfect continuity. I've structured it to answer all the questions I'll need to properly implement the next phase while keeping your project goals on track.
