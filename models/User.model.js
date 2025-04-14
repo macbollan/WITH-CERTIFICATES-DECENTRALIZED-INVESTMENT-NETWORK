@@ -45,6 +45,25 @@ const UserSchema = new mongoose.Schema({
     default: null, // Stores the image path relative to public folder
   },
   otherPictures: [String],
+
+  walletAddress: {
+    type: String,
+    validate: {
+      validator: v => /^0x[a-fA-F0-9]{40}$/.test(v),
+      message: 'Invalid Ethereum address'
+    }
+  },
+  fiatBalance: { type: Number, default: 0 },
+  
+  kycStatus: {
+    type: String,
+    enum: ["unverified", "pending", "verified"],
+    default: "unverified"
+  }
+  
+
+
+
 });
 
 UserSchema.plugin(passportLocalMongoose);

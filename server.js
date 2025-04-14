@@ -566,9 +566,10 @@ app.get("/:id/users", async (req, res) => {
                     const tokenValue = investment.tokenValue ?? 0;  // Ensure tokenValue is defined
                     return {
                         campaignTitle: investment.campaign.title,
-                        tokenName: investment.tokenName || "N/A",
+                        tokenName: investment.tokenDetails.name || "N/A",
+                        tokenType: investment.tokenDetails.type,
                         amount: investment.tokens,
-                        valuePerToken: tokenValue,
+                        valuePerToken: investment.tokenDetails.value,
                     };
                 });
 

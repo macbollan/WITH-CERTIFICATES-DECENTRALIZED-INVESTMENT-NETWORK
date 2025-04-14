@@ -23,40 +23,12 @@
         background: rgba(0,0,0,0.7);
         color: white;
         border-radius: 50rem;
-    }
-    
-    .token-progress {
-        height: 6px;
-        background: rgba(0,0,0,0.05);
-        border-radius: 3px;
-        overflow: hidden;
-        margin: 10px 0;
-    }
-    
-    .token-progress-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #2575fc 0%, #6a11cb 100%);
-        transition: width 0.6s ease;
-    }
-    
-    .certificate-preview {
-        border: 2px dashed #dee2e6;
-        border-radius: 8px;
-        padding: 15px;
-        background: white;
-        cursor: pointer;
         transition: all 0.3s ease;
-    }
-    
-    .certificate-preview:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        border-color: #0d6efd;
     }
     
     /* Campaign card enhancements */
     .campaign-card {
-        border: none;
+        border: 1px solid rgba(0,0,0,0.03);
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
@@ -64,8 +36,9 @@
     }
     
     .campaign-card:hover {
-        box-shadow: 0 14px 28px rgba(0,0,0,0.1);
         transform: translateY(-5px);
+        box-shadow: 0 14px 28px rgba(0,0,0,0.1);
+        border-color: rgba(0,0,0,0.1);
     }
     
     .campaign-image-container {
@@ -85,21 +58,53 @@
         transform: scale(1.05);
     }
     
+    .campaign-card:hover .token-badge {
+        transform: scale(1.1);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
     /* Badge colors */
     .profit-badge { background-color: #0dcaf0; }
     .equity-badge { background-color: #0d6efd; }
     .hybrid-badge { background-color: #198754; }
     .rewards-badge { background-color: #ffc107; color: #000; }
     
-    /* Delete button fix */
-    .btn-delete {
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
+    /* Investment calculator */
+    .investment-preview {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 10px;
+        padding: 15px;
+    }
+    
+    .investment-progress-container {
+        height: 6px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 3px;
+        margin: 10px 0;
+    }
+    
+    .investment-progress {
+        height: 100%;
+        background: linear-gradient(90deg, #2575fc 0%, #6a11cb 100%);
+        border-radius: 3px;
+        transition: width 0.4s ease;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .campaign-image-container {
+            height: 150px;
+        }
+        
+        .token-badge {
+            font-size: 0.6rem;
+            padding: 0.25em 0.5em;
+        }
     }
 </style>
 
 <body>
-    <div class="container py-4">
+    <div class="container-fluid px-lg-5 py-4">
         <!-- Campaign Filter Bar -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="mb-0">Available Campaigns</h2>
@@ -132,7 +137,7 @@
         <% } %>
 
         <!-- Campaign Grid -->
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 row-cols-xxl-4 g-4">
             <% campaigns.forEach(campaign => { %>
                 <div class="col">
                     <div class="card campaign-card h-100">
@@ -152,7 +157,11 @@
                                 campaign.tokenType === 'profit' ? 'profit-badge' : 
                                 campaign.tokenType === 'ownership' ? 'equity-badge' : 'hybrid-badge' 
                             %>">
-                                <%= campaign.tokenType.charAt(0).toUpperCase() %>
+                                <i class="bi bi-<%= 
+                                    campaign.tokenType === 'profit' ? 'graph-up' : 
+                                    campaign.tokenType === 'ownership' ? 'building' : 'collection' 
+                                %>"></i>
+                                <%= campaign.tokenType.charAt(0).toUpperCase() + campaign.tokenType.slice(1) %>
                             </span>
                         </div>
 
@@ -177,22 +186,30 @@
                                 <%= campaign.description.substring(0, 100) %><%= campaign.description.length > 100 ? '...' : '' %>
                             </p>
 
-                            <!-- Tokenomics Visualization -->
+                            <!-- Enhanced Tokenomics Visualization -->
                             <div class="token-visualization p-3 mb-3">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <small class="text-muted">TOKEN VALUE</small>
                                     <strong>$<%= (campaign.goalAmount / campaign.totalTokens).toFixed(2) %></strong>
                                 </div>
                                 
-                                <div class="token-progress">
-                                    <div class="token-progress-bar" style="width: <%= 
-                                        Math.min((campaign.amountRaised / campaign.goalAmount) * 100, 100) 
-                                    %>%"></div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" 
+                                         style="width: <%= Math.min((campaign.amountRaised / campaign.goalAmount) * 100, 100) %>%; 
+                                                background-color: <%= 
+                                                  campaign.tokenType === 'profit' ? '#20c997' : 
+                                                  campaign.tokenType === 'ownership' ? '#0d6efd' : '#6f42c1' %>">
+                                    </div>
                                 </div>
                                 
-                                <div class="d-flex justify-content-between small text-muted">
-                                    <span>Raised: $<%= campaign.amountRaised.toLocaleString() %></span>
-                                    <span>Goal: $<%= campaign.goalAmount.toLocaleString() %></span>
+                                <div class="d-flex justify-content-between mt-2">
+                                    <small class="text-muted">
+                                        <i class="bi bi-currency-dollar"></i> <%= campaign.amountRaised.toLocaleString() %>
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="bi bi-bullseye"></i> <%= campaign.goalAmount.toLocaleString() %>
+                                    </small>
                                 </div>
                             </div>
 
@@ -210,9 +227,9 @@
                                                 onclick="loadEditForm('<%= campaign._id %>')">
                                             <i class="bi bi-pencil"></i> Edit
                                         </button>
-                                        <button type="button" class="btn btn-outline-danger btn-delete" 
+                                        <button type="button" class="btn btn-outline-danger" 
                                                 onclick="confirmDelete('<%= campaign._id %>')">
-                                            <i class="bi bi-trash"></i>
+                                            <i class="bi bi-trash"></i> Delete
                                         </button>
                                     </div>
                                 <% } else if(currentUser) { %>
@@ -299,7 +316,7 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Profit Token Fields -->
+                                <!-- Dynamic Token Fields -->
                                 <div id="profitFields" class="token-fields" style="display:none;">
                                     <div class="row">
                                         <div class="col-md-6">
@@ -319,7 +336,6 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Ownership Token Fields -->
                                 <div id="ownershipFields" class="token-fields" style="display:none;">
                                     <div class="row">
                                         <div class="col-md-6">
@@ -336,7 +352,6 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Hybrid Token Fields -->
                                 <div id="hybridFields" class="token-fields" style="display:none;">
                                     <div class="row">
                                         <div class="col-md-6">
@@ -379,35 +394,47 @@
                         <input type="hidden" id="tokenType" name="tokenType">
                         
                         <div class="mb-3">
-                            <label for="investAmount" class="form-label">Amount ($)</label>
-                            <div class="input-group">
+                            <label for="investAmount" class="form-label">Investment Amount ($)</label>
+                            <div class="input-group mb-2">
                                 <span class="input-group-text">$</span>
                                 <input type="number" class="form-control" id="investAmount" 
                                        name="amount" min="1" required oninput="updateTokenPreview()">
                             </div>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="range" class="form-range" id="investRange" 
+                                       min="1" max="10000" step="1" 
+                                       oninput="document.getElementById('investAmount').value = this.value; updateTokenPreview()">
+                            </div>
+                            <div class="d-flex justify-content-between small text-muted mt-1">
+                                <span>$1</span>
+                                <span>$5,000</span>
+                                <span>$10,000+</span>
+                            </div>
                         </div>
                         
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">You'll Receive</h6>
+                        <div class="investment-preview mb-3">
+                            <h6 class="mb-3"><i class="bi bi-lightning-charge"></i> You'll Receive</h6>
+                            
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Token Type:</span>
+                                <strong id="previewTokenType"></strong>
                             </div>
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>Token Type:</span>
-                                    <strong id="previewTokenType"></strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>Token Symbol:</span>
-                                    <strong id="previewTokenSymbol"></strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>Token Amount:</span>
-                                    <strong id="previewTokenAmount">0</strong>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span>Represents:</span>
-                                    <strong id="previewTokenValue">$0.00</strong>
-                                </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Token Symbol:</span>
+                                <strong id="previewTokenSymbol"></strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Token Amount:</span>
+                                <strong id="previewTokenAmount">0 tokens</strong>
+                            </div>
+                            
+                            <div class="investment-progress-container">
+                                <div class="investment-progress" style="width: 0%"></div>
+                            </div>
+                            
+                            <div class="text-center mt-2">
+                                <small class="text-muted" id="previewTokenValue">Enter amount to see details</small>
                             </div>
                         </div>
                         
@@ -459,7 +486,8 @@
             document.getElementById('investModalTitle').textContent = `Invest in ${campaignTitle}`;
             document.getElementById('campaignId').value = campaignId;
             document.getElementById('tokenType').value = tokenType;
-            document.getElementById('previewTokenType').textContent = tokenType.charAt(0).toUpperCase() + tokenType.slice(1);
+            document.getElementById('previewTokenType').textContent = 
+                tokenType.charAt(0).toUpperCase() + tokenType.slice(1);
             document.getElementById('previewTokenSymbol').textContent = tokenSymbol;
             
             // Store additional data for calculations
@@ -471,10 +499,11 @@
             
             // Reset amount field
             document.getElementById('investAmount').value = '';
+            document.getElementById('investRange').value = '1';
             updateTokenPreview();
         }
 
-        // Update token preview in real-time
+        // Enhanced token preview calculator
         function updateTokenPreview() {
             const amount = parseFloat(document.getElementById('investAmount').value) || 0;
             const form = document.getElementById('investForm');
@@ -483,26 +512,35 @@
             const totalTokens = parseFloat(form.dataset.totalTokens);
             
             let tokenAmount = 0;
-            let tokenValue = 0;
+            let tokenValue = '';
+            let iconClass = '';
             
             if (tokenType === 'profit') {
                 const profitShare = parseFloat(form.dataset.profitShare);
                 tokenAmount = (amount / goalAmount) * totalTokens;
-                tokenValue = (profitShare * amount / goalAmount).toFixed(4) + '% profit share';
+                tokenValue = `Earns ${(profitShare * amount / goalAmount).toFixed(2)}% profit share`;
+                iconClass = 'bi-graph-up-arrow';
             } 
             else if (tokenType === 'ownership') {
                 const ownershipPercentage = parseFloat(form.dataset.ownershipPercentage);
                 tokenAmount = (amount * totalTokens) / (goalAmount * (ownershipPercentage / 100));
-                tokenValue = (ownershipPercentage * amount / goalAmount).toFixed(6) + '% equity';
+                tokenValue = `${(ownershipPercentage * amount / goalAmount).toFixed(2)}% equity stake`;
+                iconClass = 'bi-building';
             }
             else if (tokenType === 'hybrid') {
                 const ownershipPerToken = parseFloat(form.dataset.ownershipPerToken);
-                tokenAmount = amount; // 1:1 for hybrid
-                tokenValue = ownershipPerToken + '% ownership per token + rewards';
+                tokenAmount = amount;
+                tokenValue = `${ownershipPerToken}% ownership + rewards`;
+                iconClass = 'bi-collection';
             }
             
-            document.getElementById('previewTokenAmount').textContent = tokenAmount.toFixed(2);
-            document.getElementById('previewTokenValue').textContent = tokenValue;
+            document.getElementById('previewTokenAmount').innerHTML = `
+                <i class="bi ${iconClass}"></i> ${tokenAmount.toFixed(2)} tokens`;
+            document.getElementById('previewTokenValue').innerHTML = tokenValue;
+            
+            // Update visual indicator
+            const progress = Math.min((amount / goalAmount) * 100, 100);
+            document.querySelector('.investment-progress').style.width = `${progress}%`;
         }
 
         // Delete confirmation
@@ -519,6 +557,19 @@
                 });
             }
         }
+
+        // Form submission loading states
+        document.getElementById('investForm')?.addEventListener('submit', function(e) {
+            const btn = this.querySelector('button[type="submit"]');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            btn.disabled = true;
+        });
+
+        document.getElementById('createCampaignForm')?.addEventListener('submit', function(e) {
+            const btn = this.querySelector('button[type="submit"]');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deploying...';
+            btn.disabled = true;
+        });
     </script>
 
 <%- include("partials/footer") -%>
