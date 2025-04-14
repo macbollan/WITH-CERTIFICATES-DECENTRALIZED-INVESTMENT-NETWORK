@@ -64,6 +64,7 @@ app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "10mb", parameterLimit: 10000 }));
 app.use(methodOverride("_method"));
 app.use(express.static(path.join(__dirname, "public"))); // Serves static files from 'public' directory
+app.use('/metadata', express.static(path.join(__dirname, 'public/metadata')));
 app.set("view engine", "ejs");
 app.use(flash());
 
@@ -399,17 +400,26 @@ app.post("/campaigns/create", isLoggedIn, upload.single('image'), async (req, re
 
 
 
+const { uploadMetadataToIPFS } = require("./utils/ipfsUploader"); // Or mock
+const erc1155ABI = require("./abis/InvestmentToken.json").abi; // ABI from compilation
+
+
 app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
-    // Initialize contract outside try-catch for cleanup
-    const contractABI = [
+    const ledgerABI = [
         "function recordInvestment(string,address,uint256,string)",
         "function getOwner() view returns (address)",
         "event InvestmentEvent(string,address,uint256,string)"
     ];
-    
-    const contract = new ethers.Contract(
+
+    const ledgerContract = new ethers.Contract(
         process.env.CONTRACT_ADDRESS,
-        contractABI,
+        ledgerABI,
+        wallet
+    );
+
+    const erc1155Contract = new ethers.Contract(
+        process.env.ERC1155_CONTRACT_ADDRESS,
+        erc1155ABI,
         wallet
     );
 
@@ -418,25 +428,54 @@ app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
         const investor = await User.findById(req.user._id);
         const campaign = await Campaign.findById(campaignId);
 
-        // Validate input
         if (!campaignId || !amount || isNaN(amount) || amount <= 0) {
             req.flash("error", "Invalid investment amount");
             return res.redirect(req.get("Referrer") || "/");
         }
 
-        // Calculate tokens
         const tokens = calculateTokens(campaign, amount);
         const amountWei = ethers.parseEther(amount.toString());
         const campaignIdHex = "0x" + campaign._id.toString().substring(0, 16);
 
-        // Verify contract owner
-        const contractOwner = await contract.getOwner();
+        const contractOwner = await ledgerContract.getOwner();
         if (contractOwner.toLowerCase() !== wallet.address.toLowerCase()) {
             throw new Error("Wallet is not contract owner");
         }
 
-        // Send transaction
-        const tx = await contract.recordInvestment(
+        // Upload token metadata (or generate locally)
+        const metadata = {
+            name: `${campaign.tokenName} - Investment`,
+            description: `Proof of investment in ${campaign.title}`,
+            campaignId: campaign._id.toString(),
+            attributes: [
+                { trait_type: "Token Type", value: campaign.tokenType },
+                { trait_type: "Investment Amount", value: `$${amount}` },
+                { trait_type: "Token Symbol", value: campaign.tokenSymbol }
+            ],
+            image: campaign.image || "https://via.placeholder.com/300",
+            external_url: `https://yourdomain.com/campaigns/${campaign._id}`
+        };
+
+        const metadataURI = await uploadMetadataToIPFS(metadata); // Implement or mock with a static URL
+
+        const toWallet = "0xB81EBE547A4B19EC307F9Fd509720d6c622426B7"; // TEMP: override
+
+// NEW: Mint ERC-1155 token with updated 6 parameters
+const mintTx = await erc1155Contract.mintInvestmentToken(
+  toWallet,                        // investor address
+  campaign._id.toString(),        // campaignId
+  campaign.tokenSymbol,           // token symbol
+  campaign.tokenName,             // token name
+  metadataURI,                    // metadata URI
+  tokens                          // amount
+);
+
+        const mintReceipt = await mintTx.wait();
+        const tokenIdHex = mintReceipt.logs[0].topics[3]; // ERC1155 TransferSingle event
+        const tokenId = parseInt(tokenIdHex, 16);
+
+        // Record investment on the ledger
+        const tx = await ledgerContract.recordInvestment(
             campaignIdHex,
             investor.walletAddress || wallet.address,
             amountWei,
@@ -460,12 +499,12 @@ app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
                 metadata: campaign.tokenMetadata
             },
             transactionHash: receipt.hash,
-            blockchainCampaignId: campaignIdHex
+            blockchainCampaignId: campaignIdHex,
+            tokenId // NEW
         });
 
         await investment.save();
 
-        // Update campaign and user
         campaign.amountRaised += parseFloat(amount);
         campaign.investors.push(req.user._id);
         campaign.investments.push(investment._id);
@@ -476,7 +515,8 @@ app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
 
         req.flash("success", 
             `Investment successful! ` +
-            `<a href="https://sepolia.etherscan.io/tx/${receipt.hash}" target="_blank">View Transaction</a>`
+            `<a href="https://sepolia.etherscan.io/tx/${receipt.hash}" target="_blank">View Ledger Tx</a><br>` +
+            `<a href="https://sepolia.etherscan.io/tx/${mintReceipt.hash}" target="_blank">View Mint Tx</a>`
         );
         return res.redirect(`/campaigns/${campaignId}`);
 
@@ -692,6 +732,70 @@ app.get("/:transHash/blockchain", async (req, res) => {
         res.status(500).send('Error fetching transaction details');
     }
 });
+
+app.get("/certificates/:investmentId", isLoggedIn, async (req, res) => {
+    try {
+        const investmentId = req.params.investmentId;
+        const investment = await Investment.findById(investmentId).populate("campaign");
+
+        if (!investment || investment.investor.toString() !== req.user._id.toString()) {
+            return res.status(403).send("Unauthorized or not found");
+        }
+
+        await generateCertificatePDF(investment, req.user, investment.campaign, res);
+    } catch (error) {
+        console.error("Certificate generation error:", error);
+        res.status(500).send("Error generating certificate");
+    }
+});
+
+
+const PDFDocument = require("pdfkit");
+const QRCode = require("qrcode");
+const { Readable } = require("stream");
+
+// Certificate Generator
+async function generateCertificatePDF(investment, user, campaign, res) {
+    const doc = new PDFDocument();
+    const chunks = [];
+    
+    // Stream to buffer
+    doc.on("data", chunk => chunks.push(chunk));
+    doc.on("end", () => {
+        const pdfBuffer = Buffer.concat(chunks);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "attachment; filename=investment_certificate.pdf");
+        res.send(pdfBuffer);
+    });
+
+    doc.fontSize(22).text("Investment Certificate", { align: "center" });
+    doc.moveDown();
+
+    doc.fontSize(14).text(`Investor: ${user.username} (${user.walletAddress || "No wallet"})`);
+    doc.text(`Campaign: ${campaign.title}`);
+    doc.text(`Token: ${investment.tokenDetails.symbol} (${investment.tokenDetails.type})`);
+    doc.text(`Amount: ${investment.amount} USD → ${investment.tokens} tokens`);
+    doc.text(`Date: ${new Date(investment.timeCreated).toLocaleString()}`);
+    doc.moveDown();
+
+    const txURL = `https://sepolia.etherscan.io/tx/${investment.transactionHash}`;
+    doc.text("Blockchain Transaction:", { underline: true });
+    doc.text(txURL);
+    doc.moveDown();
+
+    // Generate QR Code
+    const qrDataURL = await QRCode.toDataURL(txURL);
+    const qrBuffer = Buffer.from(qrDataURL.split(",")[1], "base64");
+    doc.image(qrBuffer, { fit: [120, 120], align: "center" });
+
+    doc.moveDown();
+    doc.fontSize(10).text("This certificate confirms your participation in a blockchain-based crowdfunding campaign.", {
+        align: "justify"
+    });
+
+    doc.end();
+}
+
 
 // Start Server
 app.listen(80, function () {
