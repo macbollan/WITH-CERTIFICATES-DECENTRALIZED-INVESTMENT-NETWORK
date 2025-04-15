@@ -117,8 +117,26 @@ function isValidObjectId(id) {
     return mongoose.Types.ObjectId.isValid(id);
 }
 
-// ROUTES
+app.post("/profile/save-wallet", isLoggedIn, async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+      if (!ethers.isAddress(walletAddress)) {
+        return res.status(400).json({ success: false, error: "Invalid wallet address" });
+      }
+  
+      const user = await User.findById(req.user._id);
+      user.walletAddress = walletAddress;
+      await user.save();
+  
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Wallet save error:", err);
+      res.status(500).json({ success: false, error: "Server error" });
+    }
+  });
+  
 
+// ROUTES
 // Login Route
 app.post("/login", passport.authenticate("local", {
     successFlash: "Successfully logged in",
@@ -185,27 +203,32 @@ app.get("/profile", isLoggedIn, async (req, res) => {
 
         // Format token information
         const userTokens = processedInvestments.map(investment => {
+            console.log(investment.amount,";;;;;;;",investment.tokenDetails.value,"-----",investment.campaign.title);
             return {
                 campaignTitle: investment.campaign.title,
                 campaignId: investment.campaign._id,
-                tokenName: investment.tokenName || "N/A",
-                tokenType: investment.tokenType || "profit",
+                tokenName: investment.tokenDetails.name || "N/A",
+                tokenType: investment.tokenDetails.type || "profit",
                 amount: investment.tokens,
-                valuePerToken: investment.tokenValue || 0,
+                valuePerToken:investment.tokenDetails.value || 0,
                 // Add all other required fields with defaults
-                profitSharePercentage: investment.profitSharePercentage || 0,
+                profitSharePercentage: (investment.amount/investment.tokenDetails.value)*100,
                 ownershipPercentage: investment.ownershipPercentage || 0,
                 rewardDescription: investment.rewardDescription || "No rewards",
                 votingRights: investment.votingRights || false,
                 profitDistributionFrequency: investment.profitDistributionFrequency || "annually"
             };
         });
+        const erc1155ABI = require("./abis/InvestmentToken.json").abi;
+
 
         res.render("profile", { 
             currentUser: req.user, 
             campaigns, 
             investments: processedInvestments, 
-            userTokens 
+            userTokens,
+            erc1155ABI, 
+            contractAddress: process.env.ERC1155_CONTRACT_ADDRESS
         });
     } catch (error) {
         console.error("Profile Fetch Error:", error);
@@ -453,7 +476,7 @@ app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
                 { trait_type: "Token Symbol", value: campaign.tokenSymbol }
             ],
             image: campaign.image || "https://via.placeholder.com/300",
-            external_url: `https://yourdomain.com/campaigns/${campaign._id}`
+            external_url: `http://localhost/campaigns/${campaign._id}`
         };
 
         const metadataURI = await uploadMetadataToIPFS(metadata); // Implement or mock with a static URL
@@ -495,7 +518,7 @@ const mintTx = await erc1155Contract.mintInvestmentToken(
                 name: campaign.tokenName,
                 symbol: campaign.tokenSymbol,
                 type: campaign.tokenType,
-                value: campaign.goalAmount / campaign.totalTokens,
+                value: campaign.goalAmount,
                 metadata: campaign.tokenMetadata
             },
             transactionHash: receipt.hash,
@@ -620,13 +643,17 @@ app.get("/:id/users", async (req, res) => {
         const isInvestor = req.user && req.user.role === "investor"; // Adjust based on your logic
         const isLoggedIn = !!req.user; // Check if the user is logged in
 
+        const erc1155ABI = require("./abis/InvestmentToken.json").abi;
+
         // Render the show profile page with user and campaign data
         res.render("show_profile.ejs", {
             user: user,
             campaigns: campaigns, // Optional: You can still pass campaigns separately if needed
             isInvestor: isInvestor,
             isLoggedIn: isLoggedIn,
-            userTokens
+            userTokens,
+            erc1155ABI, 
+            contractAddress: process.env.ERC1155_CONTRACT_ADDRESS
         });
     } catch (err) {
         console.error(err);

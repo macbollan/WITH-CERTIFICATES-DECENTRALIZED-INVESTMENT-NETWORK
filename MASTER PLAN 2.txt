@@ -1,0 +1,254 @@
+Absolutely — here’s your **ultimate handover message** to continue the project with a new AI assistant. It’s fully self-contained, intelligent, and includes all relevant code, context, goals, architecture, and next steps.
+
+You can copy-paste this directly into a new chat — it will bring the next assistant 100% up to speed, like they’ve been on the project from day one.
+
+---
+
+## 🧠 PROJECT CONTINUITY BRIDGE  
+**For Developer Handoff** — *Please read carefully to continue my final year project seamlessly*
+
+---
+
+## 🚀 PROJECT OVERVIEW  
+**Hybrid Fiat + Blockchain Crowdfunding Platform**  
+- Investors can support real-world businesses
+- Payments accepted via **crypto (testnet ETH)** or **fiat (mocked or Stripe integration)**
+- Upon investment:
+  - A **record is logged on-chain** (for auditability)
+  - An **ERC-1155 token is minted** to the investor
+  - A **PDF certificate** is generated and downloadable
+- Tokens can be **traded or transferred**
+- Investors may return to the business (physically or digitally) to **claim periodic profit**
+
+---
+
+## 🎯 PROJECT GOALS
+
+1. 💸 Create a **transparent, blockchain-powered crowdfunding platform**
+2. 🧾 Allow real-world **proof of ownership** via PDF + token
+3. 🔐 Let tokens be **self-custodied** (via MetaMask)
+4. 🪙 Mint a **unique ERC-1155 token** per investment
+5. 🎟️ Allow users to redeem/share their stake in person or online
+
+---
+
+## ✅ STATUS: WHAT HAS BEEN DONE
+
+### 📁 Backend
+- Node.js + Express
+- MongoDB + Mongoose
+- All logic is in `server.js`
+- Investments save to both:
+  - Blockchain
+  - MongoDB
+
+### 🔗 Blockchain
+- Hardhat project in `/blockchain/`
+- Deployed two contracts on **Sepolia testnet**:
+  - `InvestmentLedger.sol` — logs investment info
+  - `InvestmentToken.sol` — mints ERC-1155 tokens per investment
+
+### 📜 Smart Contracts:
+
+#### 🔐 `InvestmentLedger.sol`
+Logs:
+```solidity
+struct Investment {
+  string campaignId;
+  address investor;
+  uint256 amount;
+  string tokenSymbol;
+}
+```
+Viewable via `getInvestment(index)`
+
+#### 🪙 `InvestmentToken.sol`
+Key function:
+```solidity
+function mintInvestmentToken(
+  address investor,
+  string memory campaignId,
+  string memory symbol,
+  string memory name,
+  string memory metadataURI,
+  uint256 amount
+) external onlyOwner returns (uint256)
+```
+
+Each token has metadata (stored in `mapping(uint256 => TokenData)`), is transferred to the investor’s wallet, and can be tracked.
+
+---
+
+## 🧾 CERTIFICATE SYSTEM
+- Server-side PDF generation using **PDFKit**
+- Includes:
+  - Blockchain TX hash (ledger + mint)
+  - Investor wallet
+  - Token symbol/type/amount
+  - QR code linking to Etherscan
+- Route:  
+  `GET /certificates/:investmentId`
+
+---
+
+## 🧠 DATABASE SCHEMAS
+
+### 🧍 `User.model.js`
+
+```js
+{
+  username: String,
+  surname: String,
+  email: String,
+  phone: String,
+  address: String,
+  age: Number,
+  gender: { type: String, enum: ["Male", "Female"] },
+  bio: String,
+  profilePicture: String,
+  password: String,
+  walletAddress: String, // ETH address for investment
+  fiatBalance: Number,
+  kycStatus: { type: String, enum: ["unverified", "pending", "verified"] }
+}
+```
+
+---
+
+### 📢 `Campaign.model.js`
+
+```js
+{
+  title: String,
+  description: String,
+  image: String,
+  goalAmount: Number,
+  amountRaised: Number,
+  tokenType: { type: String, enum: ["profit", "ownership", "rewards", "hybrid"] },
+  tokenName: String,
+  tokenSymbol: String,
+  totalTokens: Number,
+  tokenMetadata: Mixed,
+  tokenContractAddress: String,
+  owner: ObjectId,
+  investors: [ObjectId],
+  investments: [ObjectId],
+  timeCreated: Date
+}
+```
+
+---
+
+### 📥 `Investment.model.js`
+
+```js
+{
+  investor: ObjectId,
+  campaign: ObjectId,
+  amount: Number,
+  tokens: Number,
+  tokenDetails: {
+    name: String,
+    symbol: String,
+    type: String,
+    value: Number,
+    metadata: Mixed
+  },
+  blockchainCampaignId: String,
+  transactionHash: String,
+  tokenId: Number,
+  timeCreated: Date
+}
+```
+
+---
+
+## ⚙️ FUNCTIONALITY IMPLEMENTED
+
+- ✅ Campaign creation & funding logic
+- ✅ Dynamic token calculation
+- ✅ Blockchain TX recording (ledger)
+- ✅ Token minting (ERC-1155)
+- ✅ Investment saved in DB
+- ✅ PDF certificate with blockchain link
+- ✅ Wallet address fallback (temporarily hardcoded)
+- ✅ Mock metadata generation and usage
+
+---
+
+## 📍 CURRENT PHASE: UI UPGRADE & DASHBOARD
+
+Next up:
+1. 🎨 Enhance `profile.ejs`:
+   - Display all investments per user
+   - Show token info (type, amount, ID, value)
+   - Add “Download Certificate” button
+   - Show wallet address + “Connect Wallet” CTA if missing
+
+2. 🧠 Replace temporary investor address (e.g., `0xB81E...`) with actual user wallet (MetaMask connect required)
+
+3. 💬 Optional: Add “Transfer Token” and “Claim Profit” buttons
+
+---
+
+## 🔩 OTHER TECH USED
+
+- Ethers.js for blockchain calls
+- PDFKit for PDF generation
+- qrcode package for QR codes
+- Bootstrap 5 for styling
+- MongoDB local dev
+
+---
+
+## 🔐 ENV (.env in backend)
+
+```env
+ALCHEMY_SEPOLIA_URL=https://eth-sepolia.g.alchemy.com/v2/your-key
+PRIVATE_KEY=your-wallet-private-key
+CONTRACT_ADDRESS=0xLedgerContractAddress
+ERC1155_CONTRACT_ADDRESS=0xTokenContractAddress
+```
+
+---
+
+## 🚦 NEXT STEPS FOR YOU
+
+The user will soon share their `profile.ejs` file.  
+Please help them:
+
+1. ✅ Build a **user dashboard** showing their token holdings  
+2. ✅ Allow **certificate download** per investment  
+3. ✅ Display wallet address and status  
+4. ✅ Add UI for future token transfer or claim actions  
+5. ✅ Validate metadata links (optional: migrate to IPFS later)  
+6. ✅ Help finalize the wallet connect flow  
+
+---
+
+## 💬 WHY I GAVE YOU THIS
+
+I’m using the free version of ChatGPT and hitting my limit. This message is your full context. Please **pick up where the last assistant left off**, without asking for background info again.
+
+You now have:
+- Full stack structure
+- Live contracts on Sepolia
+- All models, routes, and logic in place
+- The next view (`profile.ejs`) incoming
+
+---
+
+## 🧠 Final Words
+
+You’re stepping into a **well-architected blockchain app**, designed for real investment, transparency, and tradeable profit tokens — perfect for a final year showcase.
+
+Please continue development and help me complete the UI, integrate wallet flow, and polish the platform for demonstration.
+
+--- 
+
+Let’s finish strong 🔥  
+— *The Developer* 🧑‍💻
+
+--- 
+
+Let me know if you want this exported to a `.txt` file!
