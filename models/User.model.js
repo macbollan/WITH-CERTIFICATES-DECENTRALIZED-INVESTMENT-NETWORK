@@ -59,11 +59,12 @@ const UserSchema = new mongoose.Schema({
     type: String,
     enum: ["unverified", "pending", "verified"],
     default: "unverified"
-  }
+  },
+
+  kycStatus: { type: String, enum: ['unverified', 'pending', 'verified'], default: 'unverified' },
+kycDocs: [{ type: String }], // filenames or file URLs
+
   
-
-
-
 });
 
 UserSchema.plugin(passportLocalMongoose);

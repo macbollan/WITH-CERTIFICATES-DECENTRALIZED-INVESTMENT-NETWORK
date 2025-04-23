@@ -263,16 +263,20 @@ app.get("/campaigns/:id", async (req, res) => {
             return res.status(400).send("Invalid campaign ID");
         }
 
-        // Find the campaign by ID
-        const campaign = await Campaign.findById(campaignId)
-            .populate({
-                path: "investments",
-                populate: {
-                    path: "investor",
-                    select: "username"
-                }
-            })
-            .exec();
+// Find the campaign by ID
+const campaign = await Campaign.findById(campaignId)
+    .populate({
+        path: "investments",
+        populate: {
+            path: "investor",
+            select: "username surname profilePicture"
+        }
+    })
+    .populate({
+        path: "owner",
+        select: "username surname profilePicture" // Corrected to use a single select statement
+    })
+    .exec();
 
         if (!campaign) {
             return res.status(404).send("Campaign not found.");
@@ -822,6 +826,22 @@ async function generateCertificatePDF(investment, user, campaign, res) {
 
     doc.end();
 }
+
+app.use((err, req, res, next) => {
+  if (err.name === 'CastError' && err.kind === 'ObjectId') {
+    console.warn("Caught CastError:", err.message);
+    return res.status(400).render("error", { 
+      title: "Invalid ID Format", 
+      message: "The ID provided is invalid. Please check your URL or link."
+    });
+  }
+
+  console.error("🔥 Unhandled Error:", err);
+  res.status(500).render("error", {
+    title: "Server Error",
+    message: "Something went wrong. Please try again later."
+  });
+});
 
 
 // Start Server

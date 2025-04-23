@@ -1,175 +1,20 @@
 <%- include("partials/header") -%>
 
 <style>
-    /* 3D Card Effect with Gradient Shadows */
+    /* Enhanced 3D Card Styles */
     .campaign-card-3d {
         position: relative;
         border-radius: 16px;
         overflow: hidden;
         transform-style: preserve-3d;
         transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        box-shadow: 
-            0 10px 30px -5px rgba(0, 0, 0, 0.1),
-            0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
         background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     }
 
     .campaign-card-3d:hover {
-        transform: translateY(-10px) rotateX(5deg) rotateY(-2deg);
-        box-shadow: 
-            0 20px 60px -10px rgba(0, 0, 0, 0.2),
-            0 10px 20px -10px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Holographic Token Badge */
-    .holographic-badge {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        z-index: 2;
-        font-size: 0.7rem;
-        padding: 0.35em 0.65em;
-        border-radius: 50rem;
-        background: linear-gradient(
-            135deg,
-            rgba(255,255,255,0.3) 0%,
-            rgba(255,255,255,0.1) 100%
-        );
-        backdrop-filter: blur(10px);
-        color: white;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        border: 1px solid rgba(255,255,255,0.2);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        animation: holographic-shine 8s infinite linear;
-    }
-
-    @keyframes holographic-shine {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-
-    /* Parallax Image Effect */
-    .parallax-image-container {
-        height: 200px;
-        overflow: hidden;
-        position: relative;
-        transform-style: preserve-3d;
-    }
-
-    .parallax-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.5s ease-out;
-        will-change: transform;
-    }
-
-    .campaign-card-3d:hover .parallax-image {
-        transform: scale(1.1) translateZ(20px);
-    }
-
-    /* Liquid Progress Bar */
-    .liquid-progress {
-        height: 8px;
-        border-radius: 4px;
-        background: rgba(0,0,0,0.05);
-        overflow: hidden;
-        position: relative;
-    }
-
-    .liquid-progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);
-        position: relative;
-        transition: width 0.6s cubic-bezier(0.65, 0, 0.35, 1);
-    }
-
-    .liquid-progress-fill::after {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: linear-gradient(
-            to bottom right,
-            rgba(255,255,255,0.3) 0%,
-            rgba(255,255,255,0) 50%,
-            rgba(255,255,255,0.3) 100%
-        );
-        transform: rotate(30deg);
-        animation: liquid-shine 3s infinite linear;
-    }
-
-    @keyframes liquid-shine {
-        0% { transform: translateX(-100%) rotate(30deg); }
-        100% { transform: translateX(100%) rotate(30deg); }
-    }
-
-    /* Floating Token Visualization */
-    .token-visualization-3d {
-        perspective: 1000px;
-        height: 80px;
-        position: relative;
-        margin: 15px 0;
-    }
-
-    .token-coin {
-        width: 60px;
-        height: 60px;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 50%;
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%) rotateY(0deg);
-        box-shadow: 
-            0 4px 8px rgba(0,0,0,0.1),
-            inset 0 -4px 8px rgba(0,0,0,0.1),
-            inset 0 4px 8px rgba(255,255,255,0.5);
-        transition: all 0.5s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        color: #212529;
-    }
-
-    .campaign-card-3d:hover .token-coin {
-        animation: token-spin 2s infinite linear;
-    }
-
-    @keyframes token-spin {
-        0% { transform: translateX(-50%) rotateY(0deg); }
-        100% { transform: translateX(-50%) rotateY(360deg); }
-    }
-
-    /* Glow Effect on Hover */
-    .glow-on-hover {
-        position: relative;
-        overflow: hidden;
-        z-index: 1;
-    }
-
-    .glow-on-hover::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(
-            135deg,
-            rgba(255,255,255,0.1) 0%,
-            rgba(255,255,255,0) 100%
-        );
-        z-index: -1;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .glow-on-hover:hover::before {
-        opacity: 1;
+        transform: translateY(-10px);
+        box-shadow: 0 20px 60px -10px rgba(0, 0, 0, 0.2);
     }
 
     /* Modal Enhancements */
@@ -231,14 +76,6 @@
 
     /* Responsive Adjustments */
     @media (max-width: 768px) {
-        .campaign-card-3d:hover {
-            transform: translateY(-5px);
-        }
-        
-        .parallax-image-container {
-            height: 150px;
-        }
-
         .modal-body-enhancement {
             padding: 1.5rem;
         }
@@ -250,67 +87,16 @@
 </style>
 
 <body class="bg-light">
-    <!-- Animated Background Particles -->
-    <div class="particles-container position-fixed w-100 h-100" style="z-index: -1;"></div>
-
     <div class="container-fluid px-lg-5 py-4">
-        <!-- Hero Header with Parallax Effect -->
-        <div class="hero-header mb-5 text-center" data-aos="fade-down">
-            <h1 class="display-4 fw-bold mb-3 gradient-text">Discover Tokenized Campaigns</h1>
-            <p class="lead text-muted">Invest in the future with blockchain-powered assets</p>
-            
-            <% if(currentUser) { %>
-                <button class="btn btn-primary btn-lg mt-3 glow-on-hover" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#createCampaignModal">
-                    <i class="bi bi-plus-circle"></i> Launch Your Campaign
-                </button>
-            <% } else { %>
-                <div class="d-flex justify-content-center gap-3 mt-3">
-                    <a href="/register" class="btn btn-primary btn-lg glow-on-hover">
-                        <i class="bi bi-person-plus"></i> Join Now
-                    </a>
-                    <a href="/campaigns" class="btn btn-outline-primary btn-lg">
-                        <i class="bi bi-collection"></i> Explore
-                    </a>
-                </div>
-            <% } %>
-        </div>
-
-        <% if(campaigns.length < 1) { %>
-            <div class="card shadow-sm border-0 overflow-hidden" data-aos="fade-up">
-                <div class="card-body text-center py-5">
-                    <div class="empty-state-animation mb-4">
-                        <i class="bi bi-rocket-takeoff display-1 text-muted"></i>
-                        <div class="particle-1"></div>
-                        <div class="particle-2"></div>
-                    </div>
-                    <h3 class="text-muted mb-3">No Campaigns Yet</h3>
-                    <p class="text-muted mb-4">Be the pioneer to launch the first tokenized campaign</p>
-                    <% if(currentUser) { %>
-                        <button class="btn btn-primary btn-lg glow-on-hover" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#createCampaignModal">
-                            <i class="bi bi-rocket-takeoff"></i> Launch First Campaign
-                        </button>
-                    <% } else { %>
-                        <a href="/register" class="btn btn-primary btn-lg glow-on-hover">
-                            <i class="bi bi-person-plus"></i> Register to Create
-                        </a>
-                    <% } %>
-                </div>
-            </div>
-        <% } %>
-
-        <!-- Campaign Grid with 3D Effects -->
+        <!-- Campaign Grid -->
         <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 row-cols-xxl-4 g-4">
             <% campaigns.forEach((campaign, index) => { %>
                 <div class="col" data-aos="fade-up" data-aos-delay="<%= index * 50 %>">
                     <div class="campaign-card-3d h-100">
-                        <!-- Parallax Image -->
-                        <div class="parallax-image-container">
+                        <!-- Campaign Image -->
+                        <div class="campaign-image-container">
                             <% if(campaign.image) { %>
-                                <img src="<%= campaign.image %>" class="parallax-image" alt="<%= campaign.title %>">
+                                <img src="<%= campaign.image %>" class="campaign-image" alt="<%= campaign.title %>">
                             <% } else { %>
                                 <div class="h-100 d-flex align-items-center justify-content-center bg-gradient-<%= 
                                     campaign.tokenType === 'profit' ? 'info' : 
@@ -318,26 +104,10 @@
                                     <h4 class="text-white m-0"><%= campaign.tokenSymbol || 'TKN' %></h4>
                                 </div>
                             <% } %>
-                            <span class="holographic-badge <%= 
-                                campaign.tokenType === 'profit' ? 'bg-info' : 
-                                campaign.tokenType === 'ownership' ? 'bg-primary' : 'bg-success' %>">
-                                <i class="bi bi-<%= 
-                                    campaign.tokenType === 'profit' ? 'graph-up' : 
-                                    campaign.tokenType === 'ownership' ? 'building' : 'collection' 
-                                %> me-1"></i>
-                                <%= campaign.tokenType.toUpperCase() %>
-                            </span>
                         </div>
 
                         <!-- Card Body -->
-                        <div class="card-body position-relative">
-                            <!-- 3D Token Visualization -->
-                            <div class="token-visualization-3d">
-                                <div class="token-coin">
-                                    <%= campaign.tokenSymbol || 'TKN' %>
-                                </div>
-                            </div>
-
+                        <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div>
                                     <h5 class="card-title mb-1"><%= campaign.title %></h5>
@@ -353,18 +123,18 @@
                                 </span>
                             </div>
 
-                            <p class="card-text text-muted mb-3" style="min-height: 60px;">
+                            <p class="card-text text-muted mb-3">
                                 <%= campaign.description.substring(0, 100) %><%= campaign.description.length > 100 ? '...' : '' %>
                             </p>
 
-                            <!-- Liquid Progress Bar -->
+                            <!-- Progress Bar -->
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between small text-muted mb-2">
                                     <span>$<%= campaign.amountRaised.toLocaleString() %> raised</span>
                                     <span>$<%= campaign.goalAmount.toLocaleString() %> goal</span>
                                 </div>
-                                <div class="liquid-progress">
-                                    <div class="liquid-progress-fill" 
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar" 
                                          style="width: <%= Math.min((campaign.amountRaised / campaign.goalAmount) * 100, 100) %>%">
                                     </div>
                                 </div>
@@ -372,25 +142,25 @@
 
                             <!-- Action Buttons -->
                             <div class="d-grid gap-2">
-                                <a href="/campaigns/<%= campaign._id %>" class="btn btn-outline-primary glow-on-hover">
+                                <a href="/campaigns/<%= campaign._id %>" class="btn btn-outline-primary">
                                     <i class="bi bi-eye"></i> View Details
                                 </a>
                                 
                                 <% if(currentUser && currentUser._id.equals(campaign.owner._id)) { %>
                                     <div class="btn-group">
-                                        <button class="btn btn-outline-secondary glow-on-hover" 
+                                        <button class="btn btn-outline-secondary" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#editCampaignModal"
                                                 onclick="loadEditForm('<%= campaign._id %>')">
                                             <i class="bi bi-pencil"></i> Edit
                                         </button>
-                                        <button type="button" class="btn btn-outline-danger glow-on-hover" 
+                                        <button type="button" class="btn btn-outline-danger" 
                                                 onclick="confirmDelete('<%= campaign._id %>')">
                                             <i class="bi bi-trash"></i> Delete
                                         </button>
                                     </div>
                                 <% } else if(currentUser) { %>
-                                    <button class="btn btn-success glow-on-hover" 
+                                    <button class="btn btn-success" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#investModal"
                                             onclick="setupInvestmentModal(
@@ -407,7 +177,7 @@
                                         <i class="bi bi-currency-dollar"></i> Invest Now
                                     </button>
                                 <% } else { %>
-                                    <a href="/login?redirect=/campaigns" class="btn btn-warning glow-on-hover">
+                                    <a href="/login?redirect=/campaigns" class="btn btn-warning">
                                         <i class="bi bi-box-arrow-in-right"></i> Login to Invest
                                     </a>
                                 <% } %>
@@ -753,61 +523,8 @@
         </div>
     </div>
 
-    <!-- JavaScript Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
-        // Initialize animations
-        AOS.init({
-            duration: 800,
-            easing: 'ease-out-quad',
-            once: true
-        });
-
-        // Particle.js initialization
-        particlesJS('particles-container', {
-            particles: {
-                number: { value: 30, density: { enable: true, value_area: 800 } },
-                color: { value: "#6a11cb" },
-                shape: { type: "circle" },
-                opacity: { value: 0.5, random: true },
-                size: { value: 3, random: true },
-                line_linked: { enable: true, distance: 150, color: "#2575fc", opacity: 0.3, width: 1 },
-                move: { enable: true, speed: 2, direction: "none", random: true, straight: false, out_mode: "out" }
-            },
-            interactivity: {
-                detect_on: "canvas",
-                events: {
-                    onhover: { enable: true, mode: "repulse" },
-                    onclick: { enable: true, mode: "push" }
-                }
-            }
-        });
-
-        // 3D Card Tilt Effect
-        document.querySelectorAll('.campaign-card-3d').forEach(card => {
-            card.addEventListener('mousemove', (e) => {
-                const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
-                const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
-                card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
-                
-                // Parallax effect for image
-                const image = card.querySelector('.parallax-image');
-                if(image) {
-                    image.style.transform = `scale(1.1) translateX(${xAxis * 0.5}px) translateY(${yAxis * 0.5}px)`;
-                }
-            });
-            
-            card.addEventListener('mouseleave', () => {
-                card.style.transform = 'rotateY(0deg) rotateX(0deg)';
-                const image = card.querySelector('.parallax-image');
-                if(image) {
-                    image.style.transform = 'scale(1)';
-                }
-            });
-        });
-
         // Token Type Selection
         function selectTokenType(type) {
             document.querySelectorAll('.token-type-option').forEach(opt => {
