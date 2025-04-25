@@ -353,9 +353,30 @@
             font-size: 0.8rem;
             color: #6c757d;
         }
+
+  .star-rating i {
+    font-size: 24px;
+    cursor: pointer;
+    margin-right: 5px;
+  }
+</style>
+
     </style>
 </head>
 <body>
+
+    <div class="container">
+        <% if(error && error.length >0){ %>
+           <div class="alert alert-danger" role="alert">
+               <%= error %> 
+           </div>
+          <% } %> 
+        <% if(success && success.length >0){ %>  
+           <div class="alert alert-success" role="alert">
+               <%= success %>
+           </div>
+           <% } %>
+      </div>
     <!-- Hero Banner -->
     <div class="campaign-hero" style="background-image: url('<%= campaign.image || '/images/default-banner.jpg' %>');" data-aos="fade">
         <div class="hero-content">
@@ -410,10 +431,23 @@
                         <div>
                             <h4 class="mb-1">
                                 <%= campaign.owner.username %> <%= campaign.owner.surname %>
-                                <span class="badge bg-primary-soft text-primary ms-2">
-                                    <i class="bi bi-patch-check-fill"></i> Verified
-                                </span>
-                            </h4>
+                                
+                                <% if (campaign.owner.kycStatus === 'verified') { %>
+                                    <span class="badge bg-primary-soft text-primary ms-2">
+                                      <i class="bi bi-patch-check-fill"></i> Verified
+                                    </span>
+                                  <% } else if (campaign.owner.kycStatus === 'pending') { %>
+                                    <span class="badge bg-warning-soft text-warning ms-2">
+                                      <i class="bi bi-clock-history"></i> KYC Pending
+                                    </span>
+                                  <% } else { %>
+                                    <span class="badge bg-secondary text-light ms-2">
+                                      <i class="bi bi-question-circle"></i> Not Verified
+                                    </span>
+                                  <% } %>
+                                  
+                              </h4>
+                              
                             <p class="text-muted mb-2">Campaign Creator</p>
                             <div class="d-flex gap-2">
                                 <a href="#" class="btn btn-sm btn-outline-primary">
@@ -827,36 +861,121 @@
                             <h5 class="card-title mb-4 fw-bold">
                                 <i class="bi bi-file-earmark-text me-2"></i>Documents
                             </h5>
+
+                            <h4>📄 Investor Documents</h4>
+                            <ul>
+                              <% if (campaign.investorDocuments && campaign.investorDocuments.length > 0) { %>
+                                <% campaign.investorDocuments.forEach(doc => { 
+                                    const fileName = doc.originalName || doc.filename || '';
+                                    const isPDF = fileName.toLowerCase().endsWith('.pdf');
+                                    const isImage = /\.(jpg|jpeg|png)$/i.test(doc.originalName);
+                                  %>
+                            </ul>
                             <div class="d-flex align-items-center mb-3">
-                                <i class="bi bi-file-earmark-pdf fs-4 text-danger me-3"></i>
+                                <i class="<%= isPDF ? 'bi-file-earmark-pdf-fill text-danger' : isImage ? 'bi-file-earmark-image-fill text-info' : 'bi-file-earmark-fill' %> fs-4 me-3 bi"></i>
                                 <div>
-                                    <h6 class="mb-0">Pitch Deck</h6>
+                                    <h6 class="mb-0"><%= doc.originalName %> </h6>
                                     <small class="text-muted">PDF • 2.4 MB</small>
                                 </div>
-                                <a href="#" class="ms-auto btn btn-sm btn-outline-primary">View</a>
+                                <a href="<%= doc.filename %>" class="ms-auto btn btn-sm btn-outline-primary">View</a>
+                                <% if (currentUser && currentUser._id.toString() === campaign.owner._id.toString()) { %>
+                                    <form action="/campaigns/<%= campaign._id %>/remove-doc/<%= doc._id %>" method="POST" style="display:inline;">
+                                      <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Remove this file?')">🗑️</button>
+                                    </form>
+                                  <% } %>
                             </div>
-                            <div class="d-flex align-items-center mb-3">
-                                <i class="bi bi-file-earmark-text fs-4 text-primary me-3"></i>
-                                <div>
-                                    <h6 class="mb-0">Financial Projections</h6>
-                                    <small class="text-muted">PDF • 1.1 MB</small>
-                                </div>
-                                <a href="#" class="ms-auto btn btn-sm btn-outline-primary">View</a>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-file-earmark-text fs-4 text-success me-3"></i>
-                                <div>
-                                    <h6 class="mb-0">Token Agreement</h6>
-                                    <small class="text-muted">PDF • 3.2 MB</small>
-                                </div>
-                                <a href="#" class="ms-auto btn btn-sm btn-outline-primary">View</a>
-                            </div>
+      
+
+
+
+                            <% }) %>
+                            <% } else { %>
+                              <p>No documents uploaded.</p>
+                            <% } %>
+
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+<!-- //////////////////////////////////////////////////////////////////////////////////////////////////////////
+ /////////////////////////////////////////////////////////////////////////////////////////////////////////////--> 
+
+    <form action="/campaigns/<%= campaign._id %>/upload-docs" method="POST" enctype="multipart/form-data">
+        <label>Upload Investor Documents (PDF/JPG/PNG):</label><br />
+        <input type="file" name="docs" multiple required />
+        <button type="submit">Upload</button>
+      </form>
+
+      <form action="/campaigns/<%= campaign._id %>/rate" method="POST">
+        <label>Risk Level (1-5):</label>
+        <input type="number" name="riskScore" min="1" max="5" required>
+        
+        <label>Execution Score (1-5):</label>
+        <input type="number" name="executionScore" min="1" max="5" required>
+      
+        <label>Optional Comment:</label>
+        <textarea name="comment"></textarea>
+      
+        <button type="submit">Submit Rating</button>
+      </form>
+
+      <form action="/campaigns/<%= campaign._id %>/rate" method="POST">
+        <h5>⭐ Rate This Campaign</h5>
+      
+        <!-- Risk Rating -->
+        <label>Risk Level:</label>
+        <div class="star-rating" data-type="risk">
+          <% for (let i = 1; i <= 5; i++) { %>
+            <i class="bi bi-star" data-value="<%= i %>" data-type="risk"></i>
+          <% } %>
+          <input type="hidden" name="riskScore" id="riskScore" required>
+        </div>
+      
+        <!-- Execution Rating -->
+        <label>Execution Score:</label>
+        <div class="star-rating" data-type="execution">
+          <% for (let i = 1; i <= 5; i++) { %>
+            <i class="bi bi-star" data-value="<%= i %>" data-type="execution"></i>
+          <% } %>
+          <input type="hidden" name="executionScore" id="executionScore" required>
+        </div>
+      
+        <label>Optional Comment:</label>
+        <textarea name="comment" class="form-control"></textarea>
+      
+        <button type="submit" class="btn btn-primary mt-2">Submit Rating</button>
+      </form>
+      
+      
+
+      <h5>🌟 Community Ratings</h5>
+      <% if (campaign.ratings && campaign.ratings.length > 0) { %>
+        <p>Average Risk:
+          <%= (campaign.ratings.reduce((sum, r) => sum + r.riskScore, 0) / campaign.ratings.length).toFixed(1) %>/5
+        </p>
+        <p>Average Execution:
+          <%= (campaign.ratings.reduce((sum, r) => sum + r.executionScore, 0) / campaign.ratings.length).toFixed(1) %>/5
+        </p>
+        <ul>
+          <% campaign.ratings.forEach(r => { %>
+            <li>
+              <strong><%= r.role %></strong>: Risk <%= r.riskScore %>/5, Execution <%= r.executionScore %>/5
+              <br><em><%= r.comment %></em>
+            </li>
+          <% }) %>
+        </ul>
+      <% } else { %>
+        <p>No ratings yet.</p>
+      <% } %>
+      
+      
+
+<!-- //////////////////////////////////////////////////////////////////////////////////////////////////////////
+ /////////////////////////////////////////////////////////////////////////////////////////////////////////////--> 
+
 
     <!-- Edit Campaign Modal -->
     <div class="modal fade" id="editCampaignModal" tabindex="-1" aria-hidden="true">
@@ -1151,5 +1270,27 @@
             }
         });
     </script>
+
+<script>
+    document.querySelectorAll('.star-rating').forEach(group => {
+      const stars = group.querySelectorAll('i');
+      const input = group.querySelector('input');
+      const type = group.getAttribute('data-type');
+  
+      stars.forEach(star => {
+        star.addEventListener('click', () => {
+          const value = star.getAttribute('data-value');
+          input.value = value;
+  
+          // Update star UI
+          stars.forEach(s => {
+            const v = s.getAttribute('data-value');
+            s.className = `bi ${v <= value ? 'bi-star-fill text-warning' : 'bi-star'}`;
+          });
+        });
+      });
+    });
+  </script>
+  
 </body>
 </html>

@@ -57,12 +57,13 @@ const UserSchema = new mongoose.Schema({
   
   kycStatus: {
     type: String,
-    enum: ["unverified", "pending", "verified"],
-    default: "unverified"
+    enum: ['unverified', 'pending', 'verified'],
+    default: 'unverified'
   },
-
-  kycStatus: { type: String, enum: ['unverified', 'pending', 'verified'], default: 'unverified' },
-kycDocs: [{ type: String }], // filenames or file URLs
+  kycDocuments: [{
+    filename: String,       // e.g. /uploads/kyc_docs/1234-id.pdf
+    originalName: String    // e.g. Passport_ID.pdf
+  }],
 
   
 });

@@ -112,6 +112,165 @@ const imageFilter = (req, file, cb) => {
 
 const upload = multer({ storage: storage, fileFilter: imageFilter });
 
+/////////////////////////////////////////////////////////////////
+// PDF MULTER....
+const kyc_storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, 'public/uploads/campaign_docs');
+    },
+    filename: (req, file, cb) => {
+      cb(null, Date.now() + '-' + file.originalname);
+    },
+  });
+
+
+const kyc_fileFilter = (req, file, cb) => {
+    const allowed = ['.pdf', '.png', '.jpg', '.jpeg'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, PNG, JPG, and JPEG files are allowed'));
+    }
+  };
+
+  const kyc_upload = multer({ 
+    storage: kyc_storage,
+    fileFilter: kyc_fileFilter 
+  });
+  
+
+  // Upload route
+app.post('/campaigns/:id/upload-docs', kyc_upload.array('docs', 5), async (req, res) => {
+    try {
+      const campaign = await Campaign.findById(req.params.id);
+      if (!campaign) return res.status(404).send('Campaign not found');
+
+      const uploadedPaths = req.files.map(f => ({
+        filename: '/uploads/campaign_docs/' + f.filename,
+        originalName: f.originalname
+      }));
+      campaign.investorDocuments = [...(campaign.investorDocuments || []), ...uploadedPaths];
+  
+      await campaign.save();
+      res.redirect(`/campaigns/${campaign._id}`);
+    } catch (err) {
+      console.error(err);
+      res.status(500).send('Upload failed');
+    }
+  });
+
+/////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////
+// USER KYC MULTER....
+const kycStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, 'public/uploads/kyc_docs');
+    },
+    filename: (req, file, cb) => {
+      cb(null, Date.now() + '-' + file.originalname);
+    },
+  });
+
+
+const kycFilter = (req, file, cb) => {
+    const allowed = ['.pdf', '.png', '.jpg', '.jpeg'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, PNG, JPG, and JPEG files are allowed'));
+    }
+  };
+
+  const kycUpload = multer({ 
+    storage: kycStorage,
+    fileFilter: kycFilter 
+  });
+
+  app.post('/profile/kyc-upload', isLoggedIn, kycUpload.array('kycDocs', 3), async (req, res) => {
+    try {
+      const docs = req.files.map(file => ({
+        filename: '/uploads/kyc_docs/' + file.filename,
+        originalName: file.originalname
+      }));
+  
+      const user = await User.findById(req.user._id);
+      user.kycDocuments = docs;
+      user.kycStatus = 'pending';
+      await user.save();
+  
+      req.flash('success', 'KYC documents uploaded. Awaiting approval.');
+      res.redirect('/profile');
+    } catch (err) {
+      console.error('KYC Upload Error:', err);
+      req.flash('error', 'KYC upload failed.');
+      res.redirect('/profile');
+    }
+  });
+  
+  ///////////////////////////////////////////////////////////////////////////////////
+
+  app.post('/campaigns/:campaignId/remove-doc/:docId', isLoggedIn, async (req, res) => {
+    const campaign = await Campaign.findById(req.params.campaignId);
+    if (!campaign || campaign.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).send("Not authorized");
+    }
+  
+    const doc = campaign.investorDocuments.id(req.params.docId);
+    if (!doc) return res.status(404).send("Document not found");
+  
+    const filePath = path.join(__dirname, 'public', doc.filename);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  
+    doc.remove(); // remove from array
+    await campaign.save();
+  
+    req.flash("success", "Document removed successfully.");
+    res.redirect(`/campaigns/${campaign._id}`);
+  });
+
+  app.post("/campaigns/:id/rate", isLoggedIn, async (req, res) => {
+    const { riskScore, executionScore, comment } = req.body;
+    const campaign = await Campaign.findById(req.params.id);
+  
+    // Safeguard if campaign not found or ratings is undefined
+    if (!campaign) {
+      req.flash("error", "Campaign not found.");
+      return res.redirect("/campaigns");
+    }
+  
+    // Ensure ratings is always an array
+    if (!Array.isArray(campaign.ratings)) {
+      campaign.ratings = [];
+    }
+  
+    // Prevent multiple ratings by same user
+    const alreadyRated = campaign.ratings.find(r => r.user.toString() === req.user._id.toString());
+    if (alreadyRated) {
+      req.flash("error", "You already rated this campaign.");
+      return res.redirect(`/campaigns/${campaign._id}`);
+    }
+  
+    // Add rating
+    campaign.ratings.push({
+      user: req.user._id,
+      role: req.user.role || "investor",
+      riskScore,
+      executionScore,
+      comment
+    });
+  
+    await campaign.save();
+    req.flash("success", "Rating submitted!");
+    res.redirect(`/campaigns/${campaign._id}`);
+  });
+  
+  
+
+  //////////////////////////////////////////////////////////////////////////////////
+
 // Helper function to validate ObjectId
 function isValidObjectId(id) {
     return mongoose.Types.ObjectId.isValid(id);
@@ -252,6 +411,72 @@ app.get("/campaigns", async function (req, res) {
         res.redirect("/");
     }
 });
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                                        // ADMIN STUFF
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//app.get('/admin/', isLoggedIn, async (req, res) => {
+  //  const users = await User.find({ kycStatus: 'pending' });
+    //res.render('admin_kyc_reviews', { users });
+  //});
+
+  app.get('/admin/kyc-reviews', isLoggedIn, async (req, res) => {
+    //if (req.user.role !== 'admin') return res.status(403).send('Unauthorized');
+  
+    const pendingUsers = await User.find({ kycStatus: 'pending' });
+    res.render('admin_kyc_reviews', { users: pendingUsers });
+  });
+  
+  app.post('/admin/kyc-approve/:id', isLoggedIn, async (req, res) => {
+    const user = await User.findById(req.params.id);
+    user.kycStatus = 'verified';
+    await user.save();
+    req.flash('success', 'User KYC approved.');
+    res.redirect('/admin/');
+  });
+
+  app.get('/admin/dashboard', isLoggedIn, async (req, res) => {
+    //if (req.user.role !== 'admin') return res.status(403).send('Access denied');
+  
+    const totalUsers = await User.countDocuments();
+    const totalCampaigns = await Campaign.countDocuments();
+    const pendingKYCs = await User.countDocuments({ kycStatus: 'pending' });
+    const unapprovedCampaigns = await Campaign.countDocuments({ isApproved: false });
+  
+    res.render('admin_dashboard', {
+      currentUser: req.user,
+      stats: {
+        totalUsers,
+        totalCampaigns,
+        pendingKYCs,
+        unapprovedCampaigns
+      }
+    });
+  });
+
+  app.post('/admin/kyc/approve/:id', isLoggedIn, async (req, res) => {
+    //if (req.user.role !== 'admin') return res.status(403).send('Unauthorized');
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).send('User not found');
+    user.kycStatus = 'verified';
+    await user.save();
+    res.redirect('/admin/kyc-reviews');
+  });
+  
+  app.post('/admin/kyc/reject/:id', isLoggedIn, async (req, res) => {
+    //if (req.user.role !== 'admin') return res.status(403).send('Unauthorized');
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).send('User not found');
+    user.kycStatus = 'unverified';
+    user.kycDocuments = [];
+    await user.save();
+    res.redirect('/admin/kyc-reviews');
+  });
+  
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Campaign Details Page
 app.get("/campaigns/:id", async (req, res) => {
@@ -274,7 +499,7 @@ const campaign = await Campaign.findById(campaignId)
     })
     .populate({
         path: "owner",
-        select: "username surname profilePicture" // Corrected to use a single select statement
+        select: "username surname profilePicture  kycStatus" // Corrected to use a single select statement
     })
     .exec();
 
@@ -837,10 +1062,6 @@ app.use((err, req, res, next) => {
   }
 
   console.error("🔥 Unhandled Error:", err);
-  res.status(500).render("error", {
-    title: "Server Error",
-    message: "Something went wrong. Please try again later."
-  });
 });
 
 

@@ -1,0 +1,45 @@
+<%- include('partials/header') %>
+
+<div class="container mt-5">
+  <h2>📋 Pending KYC Submissions</h2>
+
+  <% if (users.length === 0) { %>
+    <p>No pending KYC requests.</p>
+  <% } else { %>
+    <table class="table table-bordered table-striped mt-4">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Email</th>
+          <th>Documents</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% users.forEach(user => { %>
+          <tr>
+            <td><%= user.username %></td>
+            <td><%= user.email %></td>
+            <td>
+              <% user.kycDocuments.forEach(doc => { %>
+                <a href="<%= doc.filename %>" target="_blank" class="btn btn-sm btn-outline-info mb-1">
+                  <%= doc.originalName || "Document" %>
+                </a><br>
+              <% }) %>
+            </td>
+            <td>
+              <form action="/admin/kyc/approve/<%= user._id %>" method="POST" style="display:inline-block;">
+                <button class="btn btn-success btn-sm">Approve</button>
+              </form>
+              <form action="/admin/kyc/reject/<%= user._id %>" method="POST" style="display:inline-block;" onsubmit="return confirm('Reject and delete KYC docs?');">
+                <button class="btn btn-danger btn-sm">Reject</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

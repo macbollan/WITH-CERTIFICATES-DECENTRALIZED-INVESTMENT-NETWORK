@@ -1,0 +1,46 @@
+<%- include('partials/header') %>
+
+<div class="container mt-5">
+  <h1 class="mb-4">🛠️ Admin Dashboard</h1>
+
+  <div class="row g-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-left-primary p-3">
+        <h5>Total Users</h5>
+        <p><%= stats.totalUsers %></p>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-left-success p-3">
+        <h5>Total Campaigns</h5>
+        <p><%= stats.totalCampaigns %></p>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-left-warning p-3">
+        <h5>Pending KYCs</h5>
+        <p><%= stats.pendingKYCs %></p>
+        <a href="/admin/kyc-reviews" class="btn btn-sm btn-outline-warning mt-2">Review</a>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-left-danger p-3">
+        <h5>Unapproved Campaigns</h5>
+        <p><%= stats.unapprovedCampaigns %></p>
+        <a href="/admin/campaigns/review" class="btn btn-sm btn-outline-danger mt-2">Review</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-5">
+    <h4>🔍 Quick Actions</h4>
+    <ul>
+      <li><a href="/admin/users">Manage Users</a></li>
+      <li><a href="/admin/kyc-reviews">KYC Reviews</a></li>
+      <li><a href="/admin/campaigns/review">Campaign Approvals</a></li>
+      <li><a href="/admin/logs">View Activity Log</a></li>
+    </ul>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

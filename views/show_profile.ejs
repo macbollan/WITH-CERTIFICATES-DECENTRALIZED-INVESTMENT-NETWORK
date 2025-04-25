@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -267,7 +265,65 @@
             pointer-events: none;
             z-index: 0;
         }
-        
+
+        /* Contact Info Cards */
+        .contact-card {
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .contact-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        }
+
+        .contact-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border: none;
+            border-radius: 50px;
+            padding: 8px 16px;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateX(-3px);
+        }
+
+        .back-btn-bottom {
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: 50px;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn-bottom:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(106,17,203,0.3);
+        }
+
         @media (max-width: 768px) {
             .profile-header {
                 clip-path: polygon(0 0, 100% 0, 100% 90%, 0 100%);
@@ -286,6 +342,13 @@
             .section-divider-text::after {
                 right: -20px;
             }
+
+            .back-btn {
+                top: 10px;
+                left: 10px;
+                padding: 6px 12px;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
@@ -299,6 +362,11 @@
         <div style="width: 150px; height: 150px; top: 70%; left: 80%; animation-delay: 3s;"></div>
         <div style="width: 60px; height: 60px; top: 40%; left: 50%; animation-delay: 6s;"></div>
     </div>
+
+    <!-- Back Button Top -->
+    <a href="/campaigns" class="back-btn" data-aos="fade-right">
+        <i class="bi bi-arrow-left me-1"></i> Back to Campaigns
+    </a>
 
     <!-- Profile Header -->
     <div class="profile-header text-center text-white pt-5">
@@ -322,7 +390,7 @@
                         </span>
                         <span class="badge bg-light text-dark">
                             <i class="bi bi-calendar me-1"></i> 
-                            Joined <%= new Date(user.createdAt).toLocaleDateString() %>
+                            Joined <%= user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Unknown Date' %>
                         </span>
                         <% if(user.walletAddress) { %>
                             <span class="badge bg-success text-white">
@@ -351,25 +419,116 @@
                             <p class="small text-muted mt-2">Connect to manage your tokens</p>
                         </div>
                     <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Information Section -->
+        <div class="row justify-content-center mt-4">
+            <div class="col-lg-8">
+                <h3 class="h5 fw-bold mb-4 d-flex align-items-center" data-aos="fade-up">
+                    <i class="bi bi-person-lines-fill me-2"></i> Contact Information
+                </h3>
+                
+                <div class="row row-cols-1 row-cols-md-3 g-4">
+                    <!-- Email Card -->
+                    <div class="col" data-aos="fade-up" data-aos-delay="50">
+                        <div class="contact-card p-4">
+                            <div class="contact-icon bg-primary bg-opacity-10 text-primary">
+                                <i class="bi bi-envelope"></i>
+                            </div>
+                            <h5 class="fw-bold">Email</h5>
+                            <% if(user.email && (currentUser && currentUser._id.equals(user._id))) { %>
+                                <p class="mb-2"><%= user.email %></p>
+                                <a href="mailto:<%= user.email %>" class="btn btn-sm btn-outline-primary">Send Email</a>
+                            <% } else if(user.publicEmail) { %>
+                                <p class="mb-2"><%= user.publicEmail %></p>
+                                <a href="mailto:<%= user.publicEmail %>" class="btn btn-sm btn-outline-primary">Send Email</a>
+                            <% } else { %>
+                                <p class="text-muted">Email not shared</p>
+                                <% if(currentUser && currentUser._id.equals(user._id)) { %>
+                                    <a href="/settings" class="btn btn-sm btn-outline-secondary">Add Email</a>
+                                <% } %>
+                            <% } %>
+                        </div>
+                    </div>
                     
-                    <div class="d-flex justify-content-center gap-2" data-aos="fade-up" data-aos-delay="150">
-                        <button class="btn btn-primary rounded-pill px-4">
-                            <i class="bi bi-person-plus me-1"></i> Follow
-                        </button>
-                        <button class="btn btn-outline-secondary rounded-pill px-4">
-                            <i class="bi bi-envelope me-1"></i> Message
-                        </button>
+                    <!-- Social Media Card -->
+                    <div class="col" data-aos="fade-up" data-aos-delay="100">
+                        <div class="contact-card p-4">
+                            <div class="contact-icon bg-info bg-opacity-10 text-info">
+                                <i class="bi bi-globe"></i>
+                            </div>
+                            <h5 class="fw-bold">Social Media</h5>
+                            <% if(user.socialLinks && Object.keys(user.socialLinks).length > 0) { %>
+                                <div class="d-flex gap-2 mt-2">
+                                    <% if(user.socialLinks.twitter) { %>
+                                        <a href="<%= user.socialLinks.twitter %>" target="_blank" class="btn btn-sm btn-outline-info">
+                                            <i class="bi bi-twitter"></i>
+                                        </a>
+                                    <% } %>
+                                    <% if(user.socialLinks.linkedin) { %>
+                                        <a href="<%= user.socialLinks.linkedin %>" target="_blank" class="btn btn-sm btn-outline-info">
+                                            <i class="bi bi-linkedin"></i>
+                                        </a>
+                                    <% } %>
+                                    <% if(user.socialLinks.telegram) { %>
+                                        <a href="<%= user.socialLinks.telegram %>" target="_blank" class="btn btn-sm btn-outline-info">
+                                            <i class="bi bi-telegram"></i>
+                                        </a>
+                                    <% } %>
+                                </div>
+                            <% } else { %>
+                                <p class="text-muted">No social links added</p>
+                                <% if(currentUser && currentUser._id.equals(user._id)) { %>
+                                    <a href="/settings" class="btn btn-sm btn-outline-secondary">Add Social Links</a>
+                                <% } %>
+                            <% } %>
+                        </div>
+                    </div>
+                    
+                    <!-- Verification Card -->
+                    <div class="col" data-aos="fade-up" data-aos-delay="150">
+                        <div class="contact-card p-4">
+                            <div class="contact-icon bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                            <h5 class="fw-bold">Verification</h5>
+                            <ul class="list-unstyled small">
+                                <li class="mb-1">
+                                    <% if(user.emailVerified) { %>
+                                        <i class="bi bi-check-circle-fill text-success me-1"></i> Email Verified
+                                    <% } else { %>
+                                        <i class="bi bi-x-circle-fill text-secondary me-1"></i> Email Not Verified
+                                    <% } %>
+                                </li>
+                                <li class="mb-1">
+                                    <% if(user.phoneVerified) { %>
+                                        <i class="bi bi-check-circle-fill text-success me-1"></i> Phone Verified
+                                    <% } else { %>
+                                        <i class="bi bi-x-circle-fill text-secondary me-1"></i> Phone Not Verified
+                                    <% } %>
+                                </li>
+                                <li>
+                                    <% if(user.kycVerified) { %>
+                                        <i class="bi bi-check-circle-fill text-success me-1"></i> KYC Completed
+                                    <% } else { %>
+                                        <i class="bi bi-x-circle-fill text-secondary me-1"></i> KYC Not Completed
+                                    <% } %>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Token Portfolio Section -->
-        <div class="row justify-content-center mt-4">
+        <div class="row justify-content-center mt-5">
             <div class="col-lg-8">
                 <h3 class="h5 fw-bold mb-4 d-flex align-items-center" data-aos="fade-up">
                     <i class="bi bi-wallet2 me-2"></i> Token Holdings
-                    <span class="badge bg-primary ms-2"><%= userTokens.length %> assets</span>
+                    <span class="badge bg-primary ms-2"><%= userTokens.length %> asset<%= userTokens.length !== 1 ? 's' : '' %></span>
                 </h3>
                 
                 <% if(userTokens.length > 0) { %>
@@ -617,6 +776,13 @@
                 <% } %>
             </div>
         </div>
+
+        <!-- Back Button Bottom -->
+        <div class="text-center my-5" data-aos="fade-up">
+            <a href="/campaigns" class="back-btn-bottom">
+                <i class="bi bi-arrow-left me-1"></i> Back to Campaigns
+            </a>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -711,50 +877,6 @@
                 }
             });
         });
-        
-        // Token transfer functionality
-        async function transferToken(tokenId) {
-            if (!window.ethereum || !window.ethereum.selectedAddress) {
-                alert('Please connect your wallet first');
-                return;
-            }
-            
-            const recipient = prompt('Enter recipient wallet address:');
-            if (!recipient || !ethers.utils.isAddress(recipient)) {
-                alert('Please enter a valid Ethereum address');
-                return;
-            }
-            
-            const amount = prompt('Enter amount to transfer:');
-            if (!amount || isNaN(amount) || amount <= 0) {
-                alert('Please enter a valid amount');
-                return;
-            }
-            
-            try {
-                const provider = new ethers.providers.Web3Provider(window.ethereum);
-                const signer = provider.getSigner();
-                
-                const contract = new ethers.Contract(
-                    '<%= contractAddress %>',
-                    <%- JSON.stringify(erc1155ABI) %>,
-                    signer
-                );
-                
-                const tx = await contract.safeTransferFrom(
-                    await signer.getAddress(),
-                    recipient,
-                    tokenId,
-                    amount,
-                    '0x'
-                );
-                
-                alert(`Transaction submitted: ${tx.hash}`);
-            } catch (error) {
-                console.error('Transfer error:', error);
-                alert('Transfer failed: ' + error.message);
-            }
-        }
     </script>
 </body>
 </html>

@@ -35,7 +35,27 @@ const CampaignSchema = new mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   investors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   investments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Investment" }],
-  timeCreated: { type: Date, default: Date.now }
+  timeCreated: { type: Date, default: Date.now },
+
+  investorDocuments: [{
+    filename: String,
+    originalName: String
+  }],
+
+  ratings: {
+    type: [{
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      role: { type: String, enum: ['investor', 'analyst'], default: 'investor' },
+      riskScore: { type: Number, min: 1, max: 5 },
+      executionScore: { type: Number, min: 1, max: 5 },
+      comment: String,
+      date: { type: Date, default: Date.now }
+    }],
+    default: []
+  }
+  
+  
+
 });
 
 module.exports = mongoose.model("Campaign", CampaignSchema);
