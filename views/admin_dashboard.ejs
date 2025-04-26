@@ -1,46 +1,653 @@
 <%- include('partials/header') %>
 
-<div class="container mt-5">
-  <h1 class="mb-4">🛠️ Admin Dashboard</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="Screenshot (86).jpg" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <style>
+        :root {
+            --admin-primary: #4e73df;
+            --admin-secondary: #1cc88a;
+            --admin-warning: #f6c23e;
+            --admin-danger: #e74a3b;
+            --admin-light: #f8f9fc;
+            --admin-dark: #5a5c69;
+        }
+        
+        body {
+            background-color: #f8f9fc;
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        /* Admin Header */
+        .admin-header {
+            background: linear-gradient(135deg, var(--admin-primary) 0%, #224abe 100%);
+            color: white;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        /* Tabs */
+        .admin-tabs .nav-link {
+            color: var(--admin-dark);
+            font-weight: 600;
+            border: none;
+            padding: 1rem 1.5rem;
+            position: relative;
+        }
+        
+        .admin-tabs .nav-link.active {
+            color: var(--admin-primary);
+            background: transparent;
+        }
+        
+        .admin-tabs .nav-link.active:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 25%;
+            width: 50%;
+            height: 3px;
+            background: var(--admin-primary);
+            border-radius: 3px 3px 0 0;
+        }
+        
+        /* Cards */
+        .admin-card {
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            transition: all 0.3s;
+        }
+        
+        .admin-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 2rem 0 rgba(58, 59, 69, 0.2);
+        }
+        
+        .admin-card-header {
+            background-color: #f8f9fc;
+            border-bottom: 1px solid #e3e6f0;
+            font-weight: 700;
+            padding: 1rem 1.35rem;
+        }
+        
+        /* Status Badges */
+        .badge-pending {
+            background-color: var(--admin-warning);
+            color: #000;
+        }
+        
+        .badge-approved {
+            background-color: var(--admin-secondary);
+            color: #fff;
+        }
+        
+        .badge-rejected {
+            background-color: var(--admin-danger);
+            color: #fff;
+        }
+        
+        /* Action Buttons */
+        .btn-admin {
+            border-radius: 0.35rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+        
+        /* Hover Effects */
+        .hover-scale {
+            transition: all 0.2s ease;
+        }
+        
+        .hover-scale:hover {
+            transform: scale(1.03);
+        }
+        
+        /* Document Preview */
+        .document-preview {
+            width: 100%;
+            height: 200px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px dashed #dee2e6;
+        }
+        
+        .document-preview:hover {
+            border-color: var(--admin-primary);
+            background: rgba(78, 115, 223, 0.05);
+        }
+        
+        /* Stats Cards */
+        .stat-card {
+            border-left: 0.25rem solid var(--admin-primary);
+            border-radius: 0.35rem;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--admin-primary);
+            border-radius: 10px;
+        }
+        
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .admin-tabs .nav-link {
+                padding: 0.75rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
 
-  <div class="row g-4">
-    <div class="col-md-3">
-      <div class="card shadow-sm border-left-primary p-3">
-        <h5>Total Users</h5>
-        <p><%= stats.totalUsers %></p>
-      </div>
+    <div class="admin-header py-4">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h2 mb-0 text-white">
+                    <i class="bi bi-speedometer2 me-2"></i> Admin Dashboard
+                </h1>
+                <div class="text-white">
+                    <span class="me-3"><i class="bi bi-person-circle me-1"></i> Admin</span>
+                    <span class="badge bg-light text-dark"><%= new Date().toLocaleDateString() %></span>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="col-md-3">
-      <div class="card shadow-sm border-left-success p-3">
-        <h5>Total Campaigns</h5>
-        <p><%= stats.totalCampaigns %></p>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card shadow-sm border-left-warning p-3">
-        <h5>Pending KYCs</h5>
-        <p><%= stats.pendingKYCs %></p>
-        <a href="/admin/kyc-reviews" class="btn btn-sm btn-outline-warning mt-2">Review</a>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card shadow-sm border-left-danger p-3">
-        <h5>Unapproved Campaigns</h5>
-        <p><%= stats.unapprovedCampaigns %></p>
-        <a href="/admin/campaigns/review" class="btn btn-sm btn-outline-danger mt-2">Review</a>
-      </div>
-    </div>
-  </div>
 
-  <div class="mt-5">
-    <h4>🔍 Quick Actions</h4>
-    <ul>
-      <li><a href="/admin/users">Manage Users</a></li>
-      <li><a href="/admin/kyc-reviews">KYC Reviews</a></li>
-      <li><a href="/admin/campaigns/review">Campaign Approvals</a></li>
-      <li><a href="/admin/logs">View Activity Log</a></li>
-    </ul>
-  </div>
-</div>
+    <div class="container mb-5">
+        <!-- Stats Overview -->
+        <div class="row mb-4" data-aos="fade-up">
+            <div class="col-md-3 mb-3">
+                <div class="stat-card admin-card p-4 bg-white">
+                    <div class="text-muted mb-1">Pending KYC</div>
+                    <div class="stat-value text-primary"><%= pendingUsers.length %></div>
+                    <i class="bi bi-person-check float-end text-primary opacity-25" style="font-size: 2rem;"></i>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card admin-card p-4 bg-white" style="border-left-color: var(--admin-secondary);">
+                    <div class="text-muted mb-1">Pending Campaigns</div>
+                    <div class="stat-value text-success"><%= pendingCampaigns.length %></div>
+                    <i class="bi bi-lightning-charge float-end text-success opacity-25" style="font-size: 2rem;"></i>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card admin-card p-4 bg-white" style="border-left-color: var(--admin-warning);">
+                    <div class="text-muted mb-1">Total Users</div>
+                    <div class="stat-value text-warning"><%= allUsers.length %></div>
+                    <i class="bi bi-people float-end text-warning opacity-25" style="font-size: 2rem;"></i>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="stat-card admin-card p-4 bg-white" style="border-left-color: var(--admin-danger);">
+                    <div class="text-muted mb-1">Active Campaigns</div>
+                    <div class="stat-value text-danger"><%= allCampaigns.filter(c => c.isApproved).length %></div>
+                    <i class="bi bi-collection float-end text-danger opacity-25" style="font-size: 2rem;"></i>
+                </div>
+            </div>
+        </div>
 
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs admin-tabs mb-4" id="adminTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="kyc-tab" data-bs-toggle="tab" data-bs-target="#kycSection">
+                    <i class="bi bi-person-badge me-2"></i>KYC Reviews
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="campaign-tab" data-bs-toggle="tab" data-bs-target="#campaignSection">
+                    <i class="bi bi-lightning-charge me-2"></i>Campaign Approvals
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#usersSection">
+                    <i class="bi bi-people me-2"></i>Manage Users
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="campaigns-tab" data-bs-toggle="tab" data-bs-target="#campaignsSection">
+                    <i class="bi bi-collection me-2"></i>Manage Campaigns
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tabs Content -->
+        <div class="tab-content" id="adminTabContent">
+            
+            <!-- KYC Reviews Tab -->
+            <div class="tab-pane fade show active" id="kycSection">
+                <div class="admin-card mb-4">
+                    <div class="admin-card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Pending KYC Submissions</h5>
+                        <div>
+                            <span class="badge bg-primary rounded-pill"><%= pendingUsers.length %> pending</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <% if (pendingUsers.length === 0) { %>
+                            <div class="text-center py-5">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                                <h4 class="mt-3">No pending KYC requests</h4>
+                                <p class="text-muted">All KYC submissions have been processed</p>
+                            </div>
+                        <% } else { %>
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="kycTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Details</th>
+                                            <th>Documents</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% pendingUsers.forEach(user => { %>
+                                            <tr class="hover-scale">
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <img src="<%= user.profilePicture || '/images/default-avatar.png' %>" 
+                                                             class="rounded-circle me-3" 
+                                                             width="40" 
+                                                             height="40" 
+                                                             alt="<%= user.username %>">
+                                                        <div>
+                                                            <h6 class="mb-0"><%= user.username %></h6>
+                                                            <small class="text-muted"><%= user.email %></small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <small class="d-block">Joined: <%= new Date(user.createdAt).toLocaleDateString() %></small>
+                                                    <small class="d-block">Last Active: <%= user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never' %></small>
+                                                </td>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" 
+                                                                type="button" 
+                                                                data-bs-toggle="dropdown">
+                                                            View Documents (<%= user.kycDocuments.length %>)
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <% user.kycDocuments.forEach(doc => { %>
+                                                                <li>
+                                                                    <a class="dropdown-item" 
+                                                                       href="<%= doc.filename %>" 
+                                                                       target="_blank">
+                                                                        <i class="bi bi-file-earmark-text me-2"></i>
+                                                                        <%= doc.originalName || "Document" %>
+                                                                    </a>
+                                                                </li>
+                                                            <% }) %>
+                                                        </ul>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <form action="/admin/kyc/approve/<%= user._id %>" method="POST">
+                                                            <button type="submit" class="btn btn-success">
+                                                                <i class="bi bi-check-circle"></i> Approve
+                                                            </button>
+                                                        </form>
+                                                        <form action="/admin/kyc/reject/<%= user._id %>" method="POST" 
+                                                              onsubmit="return confirm('Reject KYC for <%= user.username %>?');">
+                                                            <button type="submit" class="btn btn-danger">
+                                                                <i class="bi bi-x-circle"></i> Reject
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <% }) %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- Campaign Approvals Tab -->
+            <div class="tab-pane fade" id="campaignSection">
+                <div class="admin-card mb-4">
+                    <div class="admin-card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-lightning-charge me-2"></i>Pending Campaign Approvals</h5>
+                        <div>
+                            <span class="badge bg-primary rounded-pill"><%= pendingCampaigns.length %> pending</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <% if (pendingCampaigns.length === 0) { %>
+                            <div class="text-center py-5">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                                <h4 class="mt-3">No pending campaigns</h4>
+                                <p class="text-muted">All campaigns have been reviewed</p>
+                            </div>
+                        <% } else { %>
+                            <div class="row">
+                                <% pendingCampaigns.forEach(campaign => { %>
+                                    <div class="col-md-6 mb-4">
+                                        <div class="admin-card h-100">
+                                            <div class="admin-card-header">
+                                                <h5 class="mb-0"><%= campaign.title %></h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <img src="<%= campaign.owner?.profilePicture || '/images/default-avatar.png' %>" 
+                                                             class="rounded-circle me-2" 
+                                                             width="30" 
+                                                             height="30" 
+                                                             alt="<%= campaign.owner?.username %>">
+                                                        <span><%= campaign.owner?.username || "Unknown" %></span>
+                                                    </div>
+                                                    <p class="text-muted mb-2"><%= campaign.description.substring(0, 100) %>...</p>
+                                                    <div class="d-flex justify-content-between mb-3">
+                                                        <span class="badge bg-primary">
+                                                            $<%= campaign.goalAmount.toLocaleString() %> Goal
+                                                        </span>
+                                                        <span class="badge bg-secondary">
+                                                            <%= campaign.tokenType.toUpperCase() %> Tokens
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    <% if (campaign.investorDocuments && campaign.investorDocuments.length > 0) { %>
+                                                        <h6 class="mt-3 mb-2">Documents:</h6>
+                                                        <div class="row g-2">
+                                                            <% campaign.investorDocuments.forEach(doc => { %>
+                                                                <div class="col-md-6">
+                                                                    <div class="document-preview hover-scale" 
+                                                                         onclick="window.open('<%= doc.filename %>', '_blank')">
+                                                                        <i class="bi bi-file-earmark-text" style="font-size: 2rem;"></i>
+                                                                    </div>
+                                                                    <small class="text-center d-block mt-1"><%= doc.originalName || "Document" %></small>
+                                                                </div>
+                                                            <% }) %>
+                                                        </div>
+                                                    <% } %>
+                                                </div>
+                                                
+                                                <div class="d-flex justify-content-between pt-3 border-top">
+                                                    <small class="text-muted">
+                                                        Created: <%= new Date(campaign.createdAt).toLocaleDateString() %>
+                                                    </small>
+                                                    <form action="/admin/campaigns/approve/<%= campaign._id %>" method="POST">
+                                                        <button type="submit" class="btn btn-success btn-admin">
+                                                            <i class="bi bi-check-circle me-1"></i> Approve
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- Manage Users Tab -->
+            <div class="tab-pane fade" id="usersSection">
+                <div class="admin-card mb-4">
+                    <div class="admin-card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-people me-2"></i>Manage Users</h5>
+                        <div>
+                            <a href="/admin/users/export" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-download me-1"></i> Export CSV
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="usersTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Contact</th>
+                                        <th>Status</th>
+                                        <th>Wallet</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% allUsers.forEach(user => { %>
+                                        <tr class="hover-scale">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="<%= user.profilePicture || '/images/default-avatar.png' %>" 
+                                                         class="rounded-circle me-3" 
+                                                         width="40" 
+                                                         height="40" 
+                                                         alt="<%= user.username %>">
+                                                    <div>
+                                                        <h6 class="mb-0"><%= user.username %></h6>
+                                                        <small class="text-muted">Role: <%= user.role || "user" %></small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div><%= user.email %></div>
+                                                <% if(user.phone) { %>
+                                                    <small class="text-muted"><%= user.phone %></small>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if(user.kycStatus === 'verified') { %>
+                                                    <span class="badge badge-approved">Verified</span>
+                                                <% } else if(user.kycStatus === 'pending') { %>
+                                                    <span class="badge badge-pending">Pending</span>
+                                                <% } else { %>
+                                                    <span class="badge bg-secondary">Unverified</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if(user.walletAddress) { %>
+                                                    <small class="text-truncate d-block" style="max-width: 150px;">
+                                                        <%= user.walletAddress %>
+                                                    </small>
+                                                    <a href="#" class="text-primary small">View TXs</a>
+                                                <% } else { %>
+                                                    <span class="text-muted">—</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-outline-primary dropdown-toggle" 
+                                                            type="button" 
+                                                            data-bs-toggle="dropdown">
+                                                        Actions
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        <li>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="bi bi-eye me-2"></i>View Profile
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="bi bi-envelope me-2"></i>Message
+                                                            </a>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item text-danger" href="#">
+                                                                <i class="bi bi-trash me-2"></i>Suspend
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- Manage Campaigns Tab -->
+            <div class="tab-pane fade" id="campaignsSection">
+                <div class="admin-card mb-4">
+                    <div class="admin-card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-collection me-2"></i>Manage Campaigns</h5>
+                        <div>
+                            <a href="/admin/campaigns/export" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-download me-1"></i> Export CSV
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="campaignsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Campaign</th>
+                                        <th>Owner</th>
+                                        <th>Status</th>
+                                        <th>Progress</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% allCampaigns.forEach(campaign => { %>
+                                        <tr class="hover-scale">
+                                            <td>
+                                                <h6 class="mb-0"><%= campaign.title %></h6>
+                                                <small class="text-muted"><%= campaign.tokenName %></small>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <img src="<%= campaign.owner?.profilePicture || '/images/default-avatar.png' %>" 
+                                                         class="rounded-circle me-2" 
+                                                         width="30" 
+                                                         height="30" 
+                                                         alt="<%= campaign.owner?.username %>">
+                                                    <span><%= campaign.owner?.username || "Unknown" %></span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <% if(campaign.isApproved) { %>
+                                                    <span class="badge badge-approved">Approved</span>
+                                                <% } else { %>
+                                                    <span class="badge badge-pending">Pending</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                                        <div class="progress-bar" 
+                                                             role="progressbar" 
+                                                             style="width: <%= (campaign.amountRaised / campaign.goal * 100) %>%"></div>
+                                                    </div>
+                                                    <small><%= Math.round(campaign.amountRaised / campaign.goal * 100) %>%</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="/campaigns/<%= campaign._id %>" class="btn btn-outline-primary">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                    <a href="#" class="btn btn-outline-secondary">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </a>
+                                                    <a href="#" class="btn btn-outline-danger">
+                                                        <i class="bi bi-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    
+    <!-- AOS Animation -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    
+    <script>
+        // Initialize animations
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
+        
+        // Initialize DataTables
+        $(document).ready(function() {
+            $('#kycTable').DataTable({
+                responsive: true,
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search KYC submissions..."
+                }
+            });
+            
+            $('#usersTable').DataTable({
+                responsive: true,
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search users..."
+                }
+            });
+            
+            $('#campaignsTable').DataTable({
+                responsive: true,
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search campaigns..."
+                }
+            });
+        });
+        
+        // Document preview modal
+        function showDocumentModal(url, title) {
+            // In a real implementation, you would show a modal with the document preview
+            window.open(url, '_blank');
+        }
+    </script>
+</body>
+</html>
 <%- include('partials/footer') %>

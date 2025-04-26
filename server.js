@@ -422,58 +422,27 @@ app.get("/campaigns", async function (req, res) {
     //res.render('admin_kyc_reviews', { users });
   //});
 
-  app.get('/admin/kyc-reviews', isLoggedIn, async (req, res) => {
-    //if (req.user.role !== 'admin') return res.status(403).send('Unauthorized');
+  const createCsvWriter = require('csv-writer').createObjectCsvWriter;
   
-    const pendingUsers = await User.find({ kycStatus: 'pending' });
-    res.render('admin_kyc_reviews', { users: pendingUsers });
-  });
-  
-  app.post('/admin/kyc-approve/:id', isLoggedIn, async (req, res) => {
-    const user = await User.findById(req.params.id);
-    user.kycStatus = 'verified';
-    await user.save();
-    req.flash('success', 'User KYC approved.');
-    res.redirect('/admin/');
-  });
-
   app.get('/admin/dashboard', isLoggedIn, async (req, res) => {
-    //if (req.user.role !== 'admin') return res.status(403).send('Access denied');
-  
-    const totalUsers = await User.countDocuments();
-    const totalCampaigns = await Campaign.countDocuments();
-    const pendingKYCs = await User.countDocuments({ kycStatus: 'pending' });
-    const unapprovedCampaigns = await Campaign.countDocuments({ isApproved: false });
+    const pendingUsers = await User.find({ kycStatus: 'pending' });
+    const pendingCampaigns = await Campaign.find({ isApproved: false }).populate('owner');
+    const allUsers = await User.find();
+    const allCampaigns = await Campaign.find().populate('owner');
   
     res.render('admin_dashboard', {
-      currentUser: req.user,
-      stats: {
-        totalUsers,
-        totalCampaigns,
-        pendingKYCs,
-        unapprovedCampaigns
-      }
+      pendingUsers,
+      pendingCampaigns,
+      allUsers,
+      allCampaigns
     });
   });
-
-  app.post('/admin/kyc/approve/:id', isLoggedIn, async (req, res) => {
-    //if (req.user.role !== 'admin') return res.status(403).send('Unauthorized');
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).send('User not found');
-    user.kycStatus = 'verified';
-    await user.save();
-    res.redirect('/admin/kyc-reviews');
-  });
   
-  app.post('/admin/kyc/reject/:id', isLoggedIn, async (req, res) => {
-    //if (req.user.role !== 'admin') return res.status(403).send('Unauthorized');
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).send('User not found');
-    user.kycStatus = 'unverified';
-    user.kycDocuments = [];
-    await user.save();
-    res.redirect('/admin/kyc-reviews');
-  });
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
   
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////

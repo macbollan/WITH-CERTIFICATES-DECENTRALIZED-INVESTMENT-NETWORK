@@ -42,6 +42,12 @@ const CampaignSchema = new mongoose.Schema({
     originalName: String
   }],
 
+  isApproved: {
+    type: Boolean,
+    default: false
+  },
+  
+
   ratings: {
     type: [{
       user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
