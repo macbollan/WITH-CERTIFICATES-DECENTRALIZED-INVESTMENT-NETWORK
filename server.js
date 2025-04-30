@@ -11,14 +11,37 @@ const path = require("path");
 const fs = require("fs");
 
 
+
+
 ////////////////////////////////////////////////////////////////////////////////////////
 
 // Blockchain setup
 const { ethers } = require("ethers");
 require("dotenv").config();
 
+const pinataSDK = require('@pinata/sdk');
+//const pinata = new pinataSDK(process.env.PINATA_API_KEY, process.env.PINATA_API_SECRET);
 
-
+// Validate credentials before initialization
+if (!process.env.PINATA_API_KEY || !process.env.PINATA_API_SECRET) {
+    throw new Error('Missing Pinata credentials in environment variables');
+  }
+  
+  const pinata = new pinataSDK(
+    process.env.PINATA_API_KEY.trim(), 
+    process.env.PINATA_API_SECRET.trim()
+  );
+  
+  // Test connection immediately
+  (async () => {
+    try {
+      await pinata.testAuthentication();
+      console.log('✅ Pinata authentication successful');
+    } catch (err) {
+      console.error('❌ Pinata authentication failed:', err.message);
+      process.exit(1);
+    }
+  })();
   
 // Initialize provider and wallet
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_SEPOLIA_URL);
@@ -621,10 +644,8 @@ app.post("/campaigns/create", isLoggedIn, upload.single('image'), async (req, re
 
 
 
-const { uploadMetadataToIPFS } = require("./utils/ipfsUploader"); // Or mock
+const { uploadMetadata } = require("./utils/ipfsUploader"); // Or mock
 const erc1155ABI = require("./abis/InvestmentToken.json").abi; // ABI from compilation
-
-
 app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
     const ledgerABI = [
         "function recordInvestment(string,address,uint256,string)",
@@ -658,12 +679,13 @@ app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
         const amountWei = ethers.parseEther(amount.toString());
         const campaignIdHex = "0x" + campaign._id.toString().substring(0, 16);
 
+        // Verify contract ownership
         const contractOwner = await ledgerContract.getOwner();
-        if (contractOwner.toLowerCase() !== wallet.address.toLowerCase()) {
+        if (ethers.getAddress(contractOwner) !== ethers.getAddress(wallet.address)) {
             throw new Error("Wallet is not contract owner");
         }
 
-        // Upload token metadata (or generate locally)
+        // Upload metadata
         const metadata = {
             name: `${campaign.tokenName} - Investment`,
             description: `Proof of investment in ${campaign.title}`,
@@ -677,25 +699,46 @@ app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
             external_url: `http://localhost/campaigns/${campaign._id}`
         };
 
-        const metadataURI = await uploadMetadataToIPFS(metadata); // Implement or mock with a static URL
+        const { IpfsHash } = await pinata.pinJSONToIPFS(metadata);
+        const metadataURI = `ipfs://${IpfsHash}`;
 
-        const toWallet = "0xB81EBE547A4B19EC307F9Fd509720d6c622426B7"; // TEMP: override
 
-// NEW: Mint ERC-1155 token with updated 6 parameters
-const mintTx = await erc1155Contract.mintInvestmentToken(
-  toWallet,                        // investor address
-  campaign._id.toString(),        // campaignId
-  campaign.tokenSymbol,           // token symbol
-  campaign.tokenName,             // token name
-  metadataURI,                    // metadata URI
-  tokens                          // amount
-);
+        const tokenId = ethers.toBigInt(
+            ethers.keccak256(ethers.toUtf8Bytes(campaign._id.toString()))
+          );
+
+        const toWallet = "0xB81EBE547A4B19EC307F9Fd509720d6c622426B7";
+
+        console.log("Minting parameters:", {
+            to: investor.walletAddress || toWallet,
+            tokenId,
+            symbol: campaign.tokenSymbol,
+            name: campaign.tokenName,
+            uri: metadataURI,
+            amount: tokens.toString(),
+            contract: process.env.ERC1155_CONTRACT_ADDRESS
+        });
+
+        // Mint tokens
+        const mintTx = await erc1155Contract.mintInvestmentToken(
+            investor.walletAddress || toWallet,
+            tokenId,
+            campaign.tokenSymbol,
+            campaign.tokenName,
+            metadataURI,
+            tokens,
+            {
+                gasLimit: 500000
+            }
+        );
 
         const mintReceipt = await mintTx.wait();
-        const tokenIdHex = mintReceipt.logs[0].topics[3]; // ERC1155 TransferSingle event
-        const tokenId = parseInt(tokenIdHex, 16);
 
-        // Record investment on the ledger
+        // Get hex representation of tokenId (updated for Ethers v6)
+        const tokenIdHex = ethers.toBeHex(tokenId);
+
+
+        // Record investment
         const tx = await ledgerContract.recordInvestment(
             campaignIdHex,
             investor.walletAddress || wallet.address,
@@ -713,19 +756,19 @@ const mintTx = await erc1155Contract.mintInvestmentToken(
             amount,
             tokens,
             tokenDetails: {
-                name: campaign.tokenName,
                 symbol: campaign.tokenSymbol,
+                name: campaign.tokenName,
                 type: campaign.tokenType,
-                value: campaign.goalAmount,
-                metadata: campaign.tokenMetadata
+                value: tokens / amount
             },
             transactionHash: receipt.hash,
             blockchainCampaignId: campaignIdHex,
-            tokenId // NEW
+            tokenId: tokenIdHex
         });
 
         await investment.save();
 
+        // Update campaign and investor
         campaign.amountRaised += parseFloat(amount);
         campaign.investors.push(req.user._id);
         campaign.investments.push(investment._id);
@@ -745,7 +788,8 @@ const mintTx = await erc1155Contract.mintInvestmentToken(
         console.error("Investment error:", {
             message: error.message,
             reason: error.reason,
-            stack: error.stack
+            stack: error.stack,
+            data: error.data
         });
 
         req.flash("error", 
@@ -756,9 +800,6 @@ const mintTx = await erc1155Contract.mintInvestmentToken(
         return res.redirect(req.get("Referrer") || "/");
     }
 });
-
-
-
 
 // Helper function to calculate tokens based on campaign type
 function calculateTokens(campaign, amount) {

@@ -1,9 +1,17 @@
-
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
 module.exports = {
-  solidity: "0.8.28",
+  solidity: {
+    version: "0.8.28",
+    settings: {
+      viaIR: true,
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
+  },
   networks: {
     sepolia: {
       url: process.env.ALCHEMY_SEPOLIA_URL,
@@ -14,5 +22,4 @@ module.exports = {
   sourcify: {
     enabled: true
   }
-  
 };
