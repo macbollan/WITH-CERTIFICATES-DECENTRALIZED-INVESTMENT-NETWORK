@@ -7,6 +7,7 @@ const InvestmentSchema = new mongoose.Schema({
   tokens: { type: Number, required: true, default: 0 },
 
   blockchainCampaignId: { type: String }, // Stores the hex ID
+  tokenId: { type: Number, default:0 },
   
   // Token details snapshot at time of investment
   tokenDetails: {

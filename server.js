@@ -363,12 +363,20 @@ app.get("/profile", isLoggedIn, async (req, res) => {
         const investments = await Investment.find({ investor: req.user._id })
             .populate({
                 path: 'campaign',
-                select: 'title _id tokenSymbol', // Only populate these fields
+                select: 'title _id tokenSymbol tokenType tokenValue', // Include all needed fields
                 options: { lean: true }
             });
 
-        // Process investments to ensure safe data access
+        // Process investments with proper token details
         const processedInvestments = investments.map(investment => {
+            // Use the tokenDetails from MongoDB if available, otherwise fall back to campaign data
+            const tokenDetails = investment.tokenDetails || {
+                name: investment.campaign?.tokenSymbol || "N/A",
+                symbol: investment.campaign?.tokenSymbol || "N/A",
+                type: investment.campaign?.tokenType || "profit",
+                value: investment.campaign?.tokenValue || 0
+            };
+
             return {
                 ...investment.toObject(),
                 campaign: investment.campaign || { 
@@ -377,46 +385,57 @@ app.get("/profile", isLoggedIn, async (req, res) => {
                     tokenSymbol: "N/A"
                 },
                 tokenDetails: {
-                    symbol: investment.campaign?.tokenSymbol || "N/A",
-                    value: investment.tokenValue || 0
+                    name: tokenDetails.name,
+                    symbol: tokenDetails.symbol,
+                    type: tokenDetails.type,
+                    value: tokenDetails.value || investment.amount || 0
                 }
             };
         });
 
-        // Format token information
+        // Format token information correctly
         const userTokens = processedInvestments.map(investment => {
-            console.log(investment.amount,";;;;;;;",investment.tokenDetails.value,"-----",investment.campaign.title);
+            const tokenValue = investment.tokenDetails.value || investment.amount || 0;
+            const tokenAmount = investment.tokens || 1;
+            
             return {
+                _id: investment._id,
                 campaignTitle: investment.campaign.title,
                 campaignId: investment.campaign._id,
-                tokenName: investment.tokenDetails.name || "N/A",
-                tokenType: investment.tokenDetails.type || "profit",
-                amount: investment.tokens,
-                valuePerToken:investment.tokenDetails.value || 0,
-                // Add all other required fields with defaults
-                profitSharePercentage: (investment.amount/investment.tokenDetails.value)*100,
-                ownershipPercentage: investment.ownershipPercentage || 0,
-                rewardDescription: investment.rewardDescription || "No rewards",
-                votingRights: investment.votingRights || false,
-                profitDistributionFrequency: investment.profitDistributionFrequency || "annually"
+                tokenName: investment.tokenDetails.name,
+                tokenSymbol: investment.tokenDetails.symbol,
+                tokenType: investment.tokenDetails.type,
+                amount: tokenAmount,
+                valuePerToken: tokenValue / tokenAmount, // Calculate value per token
+                tokenId: investment.tokenId,
+                // Add all other required fields with proper values
+                profitSharePercentage: investment.tokenDetails.type === 'profit' ? 
+                    (investment.amount / tokenValue * 100) : 0,
+                ownershipPercentage: investment.tokenDetails.type === 'ownership' ? 
+                    (tokenAmount * 100) : 0, // Adjust calculation as needed
+                rewardDescription: investment.tokenDetails.type === 'rewards' ? 
+                    "Special rewards for token holders" : "No rewards",
+                votingRights: investment.tokenDetails.type === 'ownership',
+                profitDistributionFrequency: "annually"
             };
         });
-        const erc1155ABI = require("./abis/InvestmentToken.json").abi;
 
+        const erc721ABI = require("./abis/InvestmentToken721.json").abi;
 
         res.render("profile", { 
             currentUser: req.user, 
             campaigns, 
             investments: processedInvestments, 
             userTokens,
-            erc1155ABI, 
-            contractAddress: process.env.ERC1155_CONTRACT_ADDRESS
+            erc721ABI, 
+            contractAddress: process.env.ERC721_CONTRACT_ADDRESS
         });
     } catch (error) {
         console.error("Profile Fetch Error:", error);
         res.status(500).send("Server error, please try again.");
     }
 });
+
 
 // Login Form
 app.get("/login", (req, res) => {
@@ -645,23 +664,26 @@ app.post("/campaigns/create", isLoggedIn, upload.single('image'), async (req, re
 
 
 const { uploadMetadata } = require("./utils/ipfsUploader"); // Or mock
-const erc1155ABI = require("./abis/InvestmentToken.json").abi; // ABI from compilation
+        // Change ABI to ERC-721
+const erc721ABI = require("./abis/InvestmentToken721.json").abi;
 app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
+    const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_SEPOLIA_URL);
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
     const ledgerABI = [
         "function recordInvestment(string,address,uint256,string)",
-        "function getOwner() view returns (address)",
-        "event InvestmentEvent(string,address,uint256,string)"
+        "function getOwner() view returns (address)"
     ];
+    const erc721ABI = require("./abis/InvestmentToken721.json").abi;
 
     const ledgerContract = new ethers.Contract(
         process.env.CONTRACT_ADDRESS,
         ledgerABI,
         wallet
     );
-
-    const erc1155Contract = new ethers.Contract(
-        process.env.ERC1155_CONTRACT_ADDRESS,
-        erc1155ABI,
+    const erc721Contract = new ethers.Contract(
+        process.env.ERC721_CONTRACT_ADDRESS,
+        erc721ABI,
         wallet
     );
 
@@ -675,147 +697,137 @@ app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
             return res.redirect(req.get("Referrer") || "/");
         }
 
-        const tokens = calculateTokens(campaign, amount);
-        const amountWei = ethers.parseEther(amount.toString());
-        const campaignIdHex = "0x" + campaign._id.toString().substring(0, 16);
+        const { pinFileToIPFS, pinJSONToIPFS } = require("./utils/pinata");
+        const campaignImagePath = path.join(__dirname, "public", campaign.image);
 
-        // Verify contract ownership
-        const contractOwner = await ledgerContract.getOwner();
-        if (ethers.getAddress(contractOwner) !== ethers.getAddress(wallet.address)) {
-            throw new Error("Wallet is not contract owner");
+        if (!fs.existsSync(campaignImagePath)) {
+            throw new Error("Campaign image not found at " + campaignImagePath);
         }
 
-        // Upload metadata
+        // Upload image to IPFS
+        const { IpfsHash: imageCID } = await pinFileToIPFS(campaignImagePath);
+        const ipfsImageURL = `ipfs://${imageCID}`;
+
+        // Metadata object
         const metadata = {
-            name: `${campaign.tokenName} - Investment`,
-            description: `Proof of investment in ${campaign.title}`,
-            campaignId: campaign._id.toString(),
+            name: `${campaign.tokenName} Investment Certificate`,
+            description: `Proof of $${amount} investment in ${campaign.title}`,
             attributes: [
-                { trait_type: "Token Type", value: campaign.tokenType },
-                { trait_type: "Investment Amount", value: `$${amount}` },
-                { trait_type: "Token Symbol", value: campaign.tokenSymbol }
+                { trait_type: "Amount", value: amount.toString() },
+                { trait_type: "Token", value: campaign.tokenSymbol },
+                { trait_type: "Type", value: campaign.tokenType },
+                { trait_type: "Date", value: new Date().toISOString() }
             ],
-            image: campaign.image || "https://via.placeholder.com/300",
-            external_url: `http://localhost/campaigns/${campaign._id}`
+            image: ipfsImageURL,
+            external_url: `http://localhost/investments/${campaignId}-${investor._id}`
         };
 
-        const { IpfsHash } = await pinata.pinJSONToIPFS(metadata);
+        const { IpfsHash } = await pinJSONToIPFS(metadata);
         const metadataURI = `ipfs://${IpfsHash}`;
 
-
-        const tokenId = ethers.toBigInt(
-            ethers.keccak256(ethers.toUtf8Bytes(campaign._id.toString()))
-          );
-
-        const toWallet = "0xB81EBE547A4B19EC307F9Fd509720d6c622426B7";
-
-        console.log("Minting parameters:", {
-            to: investor.walletAddress || toWallet,
-            tokenId,
-            symbol: campaign.tokenSymbol,
-            name: campaign.tokenName,
-            uri: metadataURI,
-            amount: tokens.toString(),
-            contract: process.env.ERC1155_CONTRACT_ADDRESS
-        });
-
-        // Mint tokens
-        const mintTx = await erc1155Contract.mintInvestmentToken(
-            investor.walletAddress || toWallet,
-            tokenId,
+        // Estimate gas
+        const gasPrice = BigInt(await provider.send("eth_gasPrice", []));
+        const gasEstimate = await erc721Contract.mintInvestmentNFT.estimateGas(
+            investor.walletAddress,
             campaign.tokenSymbol,
             campaign.tokenName,
             metadataURI,
-            tokens,
+            amount
+        );
+        const requiredGas = gasPrice * (gasEstimate + 50000n);
+        const balance = await provider.getBalance(wallet.address);
+
+        if (balance < requiredGas) {
+            throw new Error(`Insufficient gas. Need ${ethers.formatEther(requiredGas)} ETH`);
+        }
+
+        // Mint NFT
+        const mintTx = await erc721Contract.mintInvestmentNFT(
+            investor.walletAddress,
+            campaign.tokenSymbol,
+            campaign.tokenName,
+            metadataURI,
+            amount,
             {
-                gasLimit: 500000
+                gasLimit: gasEstimate + 50000n,
+                gasPrice: gasPrice
             }
         );
 
         const mintReceipt = await mintTx.wait();
+        const event = mintReceipt.logs
+            .map(log => {
+                try {
+                    return erc721Contract.interface.parseLog(log);
+                } catch {
+                    return null;
+                }
+            })
+            .filter(e => e && e.name === "InvestmentNFTMinted")[0];
 
-        // Get hex representation of tokenId (updated for Ethers v6)
-        const tokenIdHex = ethers.toBeHex(tokenId);
 
 
-        // Record investment
-        const tx = await ledgerContract.recordInvestment(
+        const tokenId = event?.args?.tokenId?.toString();
+
+        console.log("Logs:", tokenId);
+
+        if (!tokenId) throw new Error("Unable to extract tokenId from event log");
+
+        // Record in ledger (optional)
+        const amountWei = ethers.parseEther(amount.toString());
+        const campaignIdHex = "0x" + campaign._id.toString().substring(0, 16);
+
+        const ledgerTx = await ledgerContract.recordInvestment(
             campaignIdHex,
-            investor.walletAddress || wallet.address,
+            investor.walletAddress,
             amountWei,
             campaign.tokenSymbol,
             { gasLimit: 300000 }
         );
 
-        const receipt = await tx.wait();
+        const receipt = await ledgerTx.wait();
 
-        // Save to database
         const investment = new Investment({
             investor: req.user._id,
             campaign: campaignId,
             amount,
-            tokens,
+            tokens: 1,
             tokenDetails: {
                 symbol: campaign.tokenSymbol,
                 name: campaign.tokenName,
                 type: campaign.tokenType,
-                value: tokens / amount
+                value: amount
             },
-            transactionHash: receipt.hash,
+            transactionHash: mintReceipt.hash,
             blockchainCampaignId: campaignIdHex,
-            tokenId: tokenIdHex
+            tokenId: tokenId
         });
 
         await investment.save();
 
-        // Update campaign and investor
         campaign.amountRaised += parseFloat(amount);
-        campaign.investors.push(req.user._id);
         campaign.investments.push(investment._id);
         await campaign.save();
 
-        investor.tokens = (investor.tokens || 0) + parseFloat(tokens);
-        await investor.save();
-
-        req.flash("success", 
-            `Investment successful! ` +
-            `<a href="https://sepolia.etherscan.io/tx/${receipt.hash}" target="_blank">View Ledger Tx</a><br>` +
-            `<a href="https://sepolia.etherscan.io/tx/${mintReceipt.hash}" target="_blank">View Mint Tx</a>`
+        req.flash("success",
+            `Investment NFT minted! <a href="https://sepolia.etherscan.io/tx/${mintReceipt.hash}" target="_blank">View Transaction</a> | <a href="https://testnets.opensea.io/assets/sepolia/${process.env.ERC721_CONTRACT_ADDRESS}/${tokenId}" target="_blank">View on OpenSea</a>`
         );
+
         return res.redirect(`/campaigns/${campaignId}`);
-
     } catch (error) {
-        console.error("Investment error:", {
-            message: error.message,
-            reason: error.reason,
-            stack: error.stack,
-            data: error.data
-        });
+        console.error("Investment error:", error);
 
-        req.flash("error", 
-            error.reason || 
-            error.message || 
-            "Transaction failed. Please try again."
-        );
+        let userMessage = "Transaction failed. Please try again.";
+        if (error.message.includes("insufficient funds")) {
+            userMessage = "Insufficient ETH for gas fees";
+        } else if (error.message.includes("rejected")) {
+            userMessage = "Transaction rejected by wallet";
+        }
+
+        req.flash("error", userMessage);
         return res.redirect(req.get("Referrer") || "/");
     }
 });
-
-// Helper function to calculate tokens based on campaign type
-function calculateTokens(campaign, amount) {
-    switch(campaign.tokenType) {
-        case "profit":
-            return (amount / campaign.goalAmount) * campaign.totalTokens;
-        case "ownership":
-            const ownershipValue = campaign.tokenMetadata.ownershipPercentage / 100;
-            return (amount * campaign.totalTokens) / (campaign.goalAmount * ownershipValue);
-        case "rewards":
-        case "hybrid":
-        default:
-            return amount; // 1:1 by default for other types
-    }
-}
-
 
 ///////////////////////////////////////////////////
 //////////////////////////////////////////////////
@@ -872,6 +884,7 @@ app.get("/:id/users", async (req, res) => {
                         tokenType: investment.tokenDetails.type,
                         amount: investment.tokens,
                         valuePerToken: investment.tokenDetails.value,
+                        tokenId:investment.tokenId
                     };
                 });
 
@@ -882,7 +895,12 @@ app.get("/:id/users", async (req, res) => {
         const isInvestor = req.user && req.user.role === "investor"; // Adjust based on your logic
         const isLoggedIn = !!req.user; // Check if the user is logged in
 
-        const erc1155ABI = require("./abis/InvestmentToken.json").abi;
+
+        // Change ABI to ERC-721
+const erc721ABI = require("./abis/InvestmentToken721.json").abi;
+
+
+
 
         // Render the show profile page with user and campaign data
         res.render("show_profile.ejs", {
@@ -891,8 +909,9 @@ app.get("/:id/users", async (req, res) => {
             isInvestor: isInvestor,
             isLoggedIn: isLoggedIn,
             userTokens,
-            erc1155ABI, 
-            contractAddress: process.env.ERC1155_CONTRACT_ADDRESS
+            erc721ABI,
+            investments, 
+            contractAddress: process.env.ERC721_CONTRACT_ADDRESS
         });
     } catch (err) {
         console.error(err);

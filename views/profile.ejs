@@ -514,7 +514,7 @@
     <div class="d-grid">
         <div class="d-grid gap-2 mt-2">
             <button class="btn btn-outline-primary btn-sm"
-            onclick="showMetaMaskInstructions('<%= token._id %>', '<%= token.tokenSymbol %>')">
+            onclick="showMetaMaskInstructions('<%= token._id %>', '<%= token.tokenSymbol %>','<%= token.tokenId %>')">
       <i class="bi bi-wallet2 me-1"></i> View in MetaMask
     </button>
             <a href="https://testnets.opensea.io/assets/sepolia/<%= contractAddress %>/<%= token.tokenId %>"
@@ -801,7 +801,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body small">
-          <p>MetaMask doesn't support automatic ERC-1155 import yet.</p>
+          <p>MetaMask doesn't support automatic ERC-721 import yet.</p>
           <hr>
           <ol class="ps-3">
             <li>Open <strong>MetaMask</strong></li>
@@ -1031,7 +1031,7 @@
 
                 const contract = new ethers.Contract(
                     '<%= contractAddress %>',
-                    <%- JSON.stringify(erc1155ABI) %>,
+                    <%- JSON.stringify(erc721ABI) %>,
                     signer
                 );
 
@@ -1078,11 +1078,11 @@
     </script>
 
 <script>
-function showMetaMaskInstructions(tokenId, symbol) {
-  console.log("Showing instructions for token:", tokenId, symbol); // Debug log
+function showMetaMaskInstructions(tokenId, symbol,tokenIdValue) {
+  console.log("Showing instructions for token:", tokenId, symbol,tokenIdValue); // Debug log
   
   // Update modal content
-  document.getElementById("modal-token-id").textContent = tokenId;
+  document.getElementById("modal-token-id").textContent = tokenIdValue;
   document.getElementById("modal-contract-address").textContent = "<%= contractAddress %>";
   
   // Initialize and show modal
