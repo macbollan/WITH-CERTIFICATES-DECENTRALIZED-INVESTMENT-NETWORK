@@ -320,12 +320,20 @@ app.post("/profile/save-wallet", isLoggedIn, async (req, res) => {
 
 // ROUTES
 // Login Route
+
 app.post("/login", passport.authenticate("local", {
     successFlash: "Successfully logged in",
-    successRedirect: "/profile",
     failureRedirect: "/login",
     failureFlash: true
-}));
+
+}), (req, res) => {
+    if (req.user.username === "admin") {
+        return res.redirect("/admin/dashboard");
+    }
+    res.redirect("/profile"); // normal user
+});
+
+
 
 // Logout Route
 app.get("/logout", (req, res) => {
@@ -556,7 +564,7 @@ app.post("/register", upload.single("profilePicture"), async (req, res) => {
 
             passport.authenticate("local")(req, res, function () {
                 req.flash("success", "Successfully registered");
-                res.redirect("/login");
+                res.redirect("/profile");
             });
         });
 

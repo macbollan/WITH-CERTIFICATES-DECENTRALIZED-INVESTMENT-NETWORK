@@ -1,0 +1,59 @@
+Add a “Download Certificate” or “Share NFT” option (optional but investor-friendly).
+wallet address.... seraching different wallets apps
+campaign creation different token attributes (might include changing the model files)
+adding the funded or ... and the actual states of the campaign. (EDITABLE STUFF E.T.C) Campaign dashboard shows live funding progress.
+Add closing conditions (e.g., end date or funding goal reached).
+search for campaign names.
+the admin panel is not finished at all login admin .... @Admin123
+email forgot password
+
+
+........................................................................
+finih the admin page...... ................✅ 3. Admin Features
+ Admin panel to view:
+
+All campaigns
+
+All investments
+
+All NFTs minted
+
+KYC docs and campaign documents
+
+ Ability to ban campaigns or flag suspicious ones.
+........................................................................
+
+ Ensure recordInvestment in the ledger contract is actually recording correctly.
+ Create a route or backend logic to fetch investment history from blockchain.
+ Sanitize all user input (especially file uploads and form fields).
+ Verify wallet addresses are correctly handled and checked for validity.
+Confirm proper gas estimation and error messages for failed transactions.
+ Enable NFT transfer (user-to-user gifting or trading).
+ Implement investor dashboard with graphs/stats (tokens, campaign success, ROI).
+ Offer email notifications when NFT is minted.
+Cache token data in the DB to prevent multiple blockchain reads on profile load.
+
+✅ 3. Profile Page
+✔ Shows token portfolio with investment details ✅
+
+❗ Fix NaN in “Member since” (likely from req.user.createdAt not rendered properly)
+
+❗ Add token ID and contract address to MetaMask instruction modal dynamically
+
+✅ 4. Campaign & Investment Flow
+✔ Campaign creation with tokenomics ✅
+
+✔ Investment triggers NFT + database update ✅
+
+❗ Add investment cap enforcement based on campaign goal
+
+❗ Validate campaign is still “active” before accepting new investments
+
+✅ 7. Error Handling & UX
+ Replace raw alerts with modals or toast messages
+
+ Add loading indicators during blockchain transactions
+
+ Handle edge cases: no wallet, transaction rejected, etc.
+
+

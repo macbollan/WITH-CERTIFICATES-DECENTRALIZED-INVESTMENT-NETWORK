@@ -900,64 +900,55 @@
 
         // MetaMask Wallet Connect
         async function connectWallet() {
-            if (typeof window.ethereum !== 'undefined') {
-                try {
-                    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-                    const walletAddress = accounts[0];
+    if (typeof window.ethereum !== 'undefined') {
+        try {
+            const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+            const walletAddress = accounts[0];
 
-                    // Show loading state
-                    Swal.fire({
-                        title: 'Connecting Wallet',
-                        html: 'Please wait while we connect your wallet...',
-                        allowOutsideClick: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        }
-                    });
+            // Save wallet to server
+            const res = await fetch('/profile/save-wallet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ walletAddress })
+            });
 
-                    // Post to backend to save
-                    const res = await fetch('/profile/save-wallet', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ walletAddress })
-                    });
-
-                    const data = await res.json();
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Wallet Connected!',
-                            text: 'Your wallet has been successfully connected',
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    } else {
-                        Swal.fire('Error', 'Failed to save wallet. Please try again.', 'error');
-                    }
-
-                } catch (error) {
-                    console.error(error);
-                    Swal.fire('Error', 'Wallet connection failed: ' + error.message, 'error');
-                }
-            } else {
+            const data = await res.json();
+            if (data.success) {
                 Swal.fire({
-                    title: 'MetaMask Required',
-                    text: 'Please install MetaMask to connect your wallet',
-                    icon: 'warning',
-                    confirmButtonText: 'Install MetaMask',
-                    cancelButtonText: 'Cancel',
-                    showCancelButton: true
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.open('https://metamask.io/download.html', '_blank');
-                    }
+                    icon: 'success',
+                    title: 'Wallet Connected!',
+                    text: walletAddress,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
                 });
+            } else {
+                Swal.fire("Error", "Failed to save wallet", "error");
             }
+
+        } catch (err) {
+            console.error("Connection error", err);
+            Swal.fire("Error", "Wallet connection failed", "error");
         }
+    } else {
+        // 🔁 Deep link to MetaMask mobile app (fallback)
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobile) {
+            window.location.href = "https://metamask.app.link/dapp/http//192.168.137.1" ;
+        } else {
+            Swal.fire({
+                title: "MetaMask Not Detected",
+                text: "Please install MetaMask extension to continue.",
+                icon: "warning",
+                confirmButtonText: "Install MetaMask"
+            }).then(() => {
+                window.open("https://metamask.io/download/", "_blank");
+            });
+        }
+    }
+}
+
 
         // Check wallet connection on page load
         window.addEventListener('DOMContentLoaded', async () => {
