@@ -65,6 +65,11 @@ const UserSchema = new mongoose.Schema({
     originalName: String    // e.g. Passport_ID.pdf
   }],
 
+  dateCreated: {
+    type: Date,
+    default: Date.now
+  },
+
   
 });
 

@@ -323,35 +323,44 @@
 </head>
 <body>
     <div class="container py-4">
-        <!-- Wallet Connection Section -->
-        <div class="wallet-section animate__animated animate__fadeIn">
-            <% if (currentUser.walletAddress) { %>
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-1"><i class="bi bi-wallet2 me-2"></i>Connected Wallet</h5>
-                        <div class="wallet-address"><%= currentUser.walletAddress %></div>
-                    </div>
-                    <span class="badge bg-success">
-                        <i class="bi bi-check-circle-fill me-1"></i> Verified
-                    </span>
-                </div>
-            <% } else { %>
-                <div class="wallet-warning animate__animated animate__shakeX">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
-                        <div>
-                            <strong>Wallet Not Connected</strong>
-                            <p class="mb-0">Connect your wallet to transfer tokens and receive payouts</p>
-                        </div>
-                    </div>
-                    <button onclick="connectWallet()" class="btn btn-primary btn-sm mt-2">
-                        <i class="bi bi-plug me-1"></i> Connect MetaMask
-                    </button>
-                </div>
-            <% } %>
+<!-- Wallet Connection Section -->
+<div class="wallet-section animate__animated animate__fadeIn">
+    <% if (currentUser.walletAddress) { %>
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-1"><i class="bi bi-wallet2 me-2"></i>Connected Wallet</h5>
+          <div class="wallet-address"><%= currentUser.walletAddress %></div>
         </div>
-
-
+        <span class="badge bg-success">
+          <i class="bi bi-check-circle-fill me-1"></i> Verified
+        </span>
+      </div>
+    <% } else { %>
+      <div class="wallet-warning animate__animated animate__shakeX">
+        <div class="d-flex align-items-center mb-2">
+          <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+          <div>
+            <strong>Wallet Not Connected</strong>
+            <p class="mb-0">Connect a wallet to receive tokens and payouts</p>
+          </div>
+        </div>
+  
+        <!-- Buttons -->
+        <div class="d-grid gap-2">
+          <!-- Auto Connect -->
+          <button onclick="connectWallet()" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-plug me-1"></i> Connect with MetaMask
+          </button>
+  
+          <!-- Manual Entry -->
+          <button class="btn btn-outline-secondary btn-sm" onclick="showManualWalletModal()">
+            <i class="bi bi-pencil-square me-1"></i> Enter Address Manually
+          </button>
+        </div>
+      </div>
+    <% } %>
+  </div>
+  
 
 
         <!-- Profile Header -->
@@ -372,9 +381,20 @@
                             <p class="text-muted mb-3"><%= currentUser.bio || 'No bio yet' %></p>
                         </div>
                         <div class="d-flex align-items-center">
-                            <span class="badge bg-success me-2">
-                                <i class="bi bi-patch-check-fill me-1"></i> Verified
-                            </span>
+                            <% if (currentUser.kycStatus === 'verified') { %>
+                                <span class="badge bg-success me-2">
+                                  <i class="bi bi-patch-check-fill me-1"></i> Verified
+                                </span>
+                              <% } else if (currentUser.kycStatus === 'pending') { %>
+                                <span class="badge bg-warning text-dark me-2">
+                                  <i class="bi bi-hourglass-split me-1"></i> KYC Pending
+                                </span>
+                              <% } else { %>
+                                <span class="badge bg-secondary me-2">
+                                  <i class="bi bi-exclamation-circle me-1"></i> Not Verified
+                                </span>
+                              <% } %>
+                              
                             <span class="badge bg-light text-dark">
                                 Member since <%= new Date(currentUser.dateCreated).getFullYear() %>
                             </span>
@@ -404,6 +424,39 @@
                 </div>
             </div>
         </div>
+
+        <!-- KYC Section -->
+<div class="kyc-section mt-5 animate__animated animate__fadeInUp">
+    <h4><i class="bi bi-shield-check me-2"></i>KYC Verification</h4>
+  
+    <% if (currentUser.kycStatus === 'verified') { %>
+      <div class="alert alert-success d-flex align-items-center" role="alert">
+        <i class="bi bi-patch-check-fill me-2 fs-5"></i>
+        <div>Your KYC status is <strong>Verified</strong>.</div>
+      </div>
+    <% } else if (currentUser.kycStatus === 'pending') { %>
+      <div class="alert alert-warning d-flex align-items-center" role="alert">
+        <i class="bi bi-hourglass-split me-2 fs-5"></i>
+        <div>Your documents are under review. KYC status: <strong>Pending</strong>.</div>
+      </div>
+    <% } else { %>
+      <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+        <div>Your KYC is <strong>Not Verified</strong>. Please upload your documents below.</div>
+      </div>
+  
+      <form action="/profile/kyc-upload" method="POST" enctype="multipart/form-data" class="mt-3">
+        <div class="mb-3">
+          <label for="kycDocs" class="form-label">Upload KYC Documents</label>
+          <input type="file" name="kycDocs" id="kycDocs" class="form-control" multiple required accept=".pdf,.jpg,.jpeg,.png">
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-cloud-upload me-1"></i> Upload KYC Documents
+        </button>
+      </form>
+    <% } %>
+  </div>
+  
 
         <!-- Tokens Section -->
         <div class="mb-5 animate__animated animate__fadeIn">
@@ -825,6 +878,27 @@
       </div>
     </div>
   </div>
+
+  <!-- Manual Wallet Entry Modal -->
+<div class="modal fade" id="manualWalletModal" tabindex="-1" aria-labelledby="manualWalletModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="manualWalletModalLabel">Enter Wallet Address</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="manualWalletForm">
+            <div class="mb-3">
+              <input type="text" class="form-control" id="manualWalletAddress" placeholder="0x..." required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Save Wallet</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   
 
     <!-- Token Transfer Modal -->
@@ -858,16 +932,6 @@
         </div>
     </div>
 
-    <% if (currentUser.kycStatus === 'unverified' || currentUser.kycStatus === 'pending') { %>
-        <h4>KYC Verification</h4>
-        <form action="/profile/kyc-upload" method="POST" enctype="multipart/form-data">
-          <input type="file" name="kycDocs" multiple required accept=".pdf,.jpg,.jpeg,.png" />
-          <button type="submit">Upload KYC Docs</button>
-        </form>
-        <p>Status: <strong><%= currentUser.kycStatus %></strong></p>
-      <% } else { %>
-        <p><strong>KYC Status:</strong> ✅ Verified</p>
-      <% } %>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -1103,8 +1167,38 @@ function copyToClipboard(elementId) {
       });
   }
 }
-  </script>
-  
+
+
+function showManualWalletModal() {
+    const modal = new bootstrap.Modal(document.getElementById('manualWalletModal'));
+    modal.show();
+  }
+
+  document.getElementById('manualWalletForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const walletAddress = document.getElementById('manualWalletAddress').value.trim();
+
+    if (!/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+      Swal.fire('Invalid Address', 'Please enter a valid Ethereum address.', 'error');
+      return;
+    }
+
+    const res = await fetch('/profile/save-wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      Swal.fire('Success', 'Wallet saved successfully', 'success').then(() => {
+        window.location.reload();
+      });
+    } else {
+      Swal.fire('Error', 'Could not save wallet. Please try again.', 'error');
+    }
+  });
+</script>
 
 
   </script>

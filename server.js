@@ -453,7 +453,11 @@ app.get("/login", (req, res) => {
 // Campaigns Page
 app.get("/campaigns", async function (req, res) {
     try {
-        const campaigns = await Campaign.find().populate("owner"); // Fetch full owner details;
+        const campaigns = await Campaign.find().populate({
+            path: "owner",
+            select: "username surname profilePicture kycStatus"
+          });
+          
         res.render("campaigns.ejs", { campaigns: campaigns, currentUser: req.user });
     } catch (err) {
         console.error(err);
@@ -486,6 +490,27 @@ app.get("/campaigns", async function (req, res) {
       allUsers,
       allCampaigns
     });
+  });
+  
+
+  app.post("/admin/kyc/approve/:userId", isLoggedIn, async (req, res) => {
+    try {
+      const user = await User.findById(req.params.userId);
+      if (!user) {
+        req.flash("error", "User not found.");
+        return res.redirect("/admin/dashboard");
+      }
+  
+      user.kycStatus = "verified";
+      await user.save();
+  
+      req.flash("success", `KYC approved for ${user.username}.`);
+      res.redirect("/admin/dashboard");
+    } catch (error) {
+      console.error("KYC approval error:", error);
+      req.flash("error", "Failed to approve KYC.");
+      res.redirect("/admin/dashboard");
+    }
   });
   
 
@@ -675,6 +700,7 @@ const { uploadMetadata } = require("./utils/ipfsUploader"); // Or mock
         // Change ABI to ERC-721
 const erc721ABI = require("./abis/InvestmentToken721.json").abi;
 app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
+
     const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_SEPOLIA_URL);
     const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
@@ -699,6 +725,18 @@ app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
         const { campaignId, amount } = req.body;
         const investor = await User.findById(req.user._id);
         const campaign = await Campaign.findById(campaignId);
+
+                        // Check if goal is already reached or would be exceeded
+    if (campaign.amountRaised + parseFloat(amount) > campaign.goalAmount) {
+        const remaining = campaign.goalAmount - campaign.amountRaised;
+        req.flash("error", `Funding goal almost reached. Only $${remaining.toFixed(2)} left to invest.`);
+        return res.redirect(req.get("Referrer") || "/campaigns");
+    }
+
+    // Auto-mark campaign as funded if it crosses goal
+    if (campaign.amountRaised + parseFloat(amount) >= campaign.goalAmount) {
+        campaign.status = "funded";
+    }
 
         if (!campaignId || !amount || isNaN(amount) || amount <= 0) {
             req.flash("error", "Invalid investment amount");
@@ -813,8 +851,15 @@ app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
 
         await investment.save();
 
+
         campaign.amountRaised += parseFloat(amount);
         campaign.investments.push(investment._id);
+        
+        if (campaign.amountRaised >= campaign.goalAmount) {
+            campaign.status = "funded";
+        }
+        
+
         await campaign.save();
 
         req.flash("success",
