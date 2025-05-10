@@ -31,7 +31,13 @@ const CampaignSchema = new mongoose.Schema({
   
   // Existing fields
   amountRaised: { type: Number, default: 0 },
-  status: { type: String, enum: ["active", "funded", "closed"], default: "active" },
+  
+status: {
+  type: String,
+  enum: ["active", "funded", "closed", "banned", "rejected"],
+  default: "active"
+}
+
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   investors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   investments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Investment" }],
@@ -47,6 +53,10 @@ const CampaignSchema = new mongoose.Schema({
     default: false
   },
   
+    isRejected: {
+    type: Boolean,
+    default: false
+  },
 
   ratings: {
     type: [{

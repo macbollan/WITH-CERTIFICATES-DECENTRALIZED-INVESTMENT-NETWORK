@@ -9,6 +9,7 @@ const flash = require("connect-flash");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { Parser } = require("json2csv");
 
 
 
@@ -480,7 +481,8 @@ app.get("/campaigns", async function (req, res) {
   
   app.get('/admin/dashboard', isLoggedIn, async (req, res) => {
     const pendingUsers = await User.find({ kycStatus: 'pending' });
-    const pendingCampaigns = await Campaign.find({ isApproved: false }).populate('owner');
+    const pendingCampaigns = await Campaign.find({ isApproved: false, isRejected: false }).populate('owner');
+
     const allUsers = await User.find();
     const allCampaigns = await Campaign.find().populate('owner');
   
@@ -492,7 +494,7 @@ app.get("/campaigns", async function (req, res) {
     });
   });
   
-
+// Approve User
   app.post("/admin/kyc/approve/:userId", isLoggedIn, async (req, res) => {
     try {
       const user = await User.findById(req.params.userId);
@@ -512,6 +514,127 @@ app.get("/campaigns", async function (req, res) {
       res.redirect("/admin/dashboard");
     }
   });
+
+  // Reject user KYC (or optionally ban)
+app.post("/admin/users/reject/:userId", isLoggedIn, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      req.flash("error", "User not found.");
+      return res.redirect("/admin/dashboard");
+    }
+
+    user.kycStatus = "rejected"; // Optional: user.isBanned = true;
+    await user.save();
+
+    req.flash("success", `${user.username}'s KYC has been rejected.`);
+    res.redirect("/admin/dashboard");
+  } catch (error) {
+    console.error("Reject user error:", error);
+    req.flash("error", "Failed to reject user.");
+    res.redirect("/admin/dashboard");
+  }
+});
+
+
+
+// Approve a campaign
+app.post("/admin/campaigns/approve/:campaignId", isLoggedIn, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.campaignId);
+    if (!campaign) {
+      req.flash("error", "Campaign not found.");
+      return res.redirect("/admin/dashboard");
+    }
+
+    campaign.isApproved = true;
+    campaign.status = "active";
+    await campaign.save();
+
+    req.flash("success", `Campaign "${campaign.title}" has been approved.`);
+    res.redirect("/admin/dashboard");
+  } catch (error) {
+    console.error("Approve campaign error:", error);
+    req.flash("error", "Failed to approve campaign.");
+    res.redirect("/admin/dashboard");
+  }
+});
+
+app.post('/admin/campaign/reject/:id', isLoggedIn, async (req, res) => {
+  try {
+    await Campaign.findByIdAndUpdate(req.params.id, { isApproved: false, isRejected: true });
+    req.flash('success', 'Campaign rejected.');
+    res.redirect('/admin/dashboard');
+  } catch (err) {
+    console.error("Reject Error:", err);
+    req.flash('error', 'Failed to reject campaign');
+    res.redirect('/admin/dashboard');
+  }
+});
+
+
+// BAN OR SUSPEND CAMPAIGNS
+app.post("/admin/campaigns/:id/ban", isLoggedIn, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) {
+      req.flash("error", "Campaign not found");
+      return res.redirect("/admin/dashboard");
+    }
+
+    campaign.status = "banned";
+    await campaign.save();
+
+    req.flash("success", "Campaign has been banned.");
+    res.redirect("/admin/dashboard");
+  } catch (error) {
+    console.error("Ban campaign error:", error);
+    req.flash("error", "Failed to ban campaign");
+    res.redirect("/admin/dashboard");
+  }
+});
+
+// BAN OR SUSPEND USERS
+
+app.post("/admin/users/ban/:userId", isLoggedIn, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      req.flash("error", "User not found.");
+      return res.redirect("/admin/dashboard");
+    }
+
+    user.isBanned = true;
+    await user.save();
+
+    req.flash("success", `${user.username} has been banned.`);
+    res.redirect("/admin/dashboard");
+  } catch (error) {
+    console.error("Ban user error:", error);
+    req.flash("error", "Failed to ban user.");
+    res.redirect("/admin/dashboard");
+  }
+});
+
+// Delete Event Route
+app.delete('/admin/campaign/:id', async (req, res) => {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!isValidObjectId(id)) {
+        return res.status(400).send("Invalid event ID");
+    }
+
+    try {
+        await Campaign.findByIdAndDelete(id);
+        req.flash('success', 'Campaign deleted successfully!');
+        res.redirect('/admin/dashboard');
+    } catch (error) {
+        console.error('Error deleting campaign:', error);
+        req.flash('error', 'An error occurred while deleting the event.');
+        res.redirect('/admin/dashboard');
+    }
+});
   
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1133,6 +1256,69 @@ async function generateCertificatePDF(investment, user, campaign, res) {
 
     doc.end();
 }
+
+
+
+// =====================
+// EXPORT CAMPAIGNS CSV
+// =====================
+app.get('/admin/campaigns/export', isLoggedIn, async (req, res) => {
+  try {
+    const campaigns = await Campaign.find().populate('owner');
+
+    const fields = [
+      { label: 'Title', value: 'title' },
+      { label: 'Owner', value: row => row.owner?.username || 'N/A' },
+      { label: 'Status', value: 'status' },
+      { label: 'Goal Amount', value: 'goalAmount' },
+      { label: 'Amount Raised', value: 'amountRaised' },
+      { label: 'Token Name', value: 'tokenName' },
+      { label: 'Token Symbol', value: 'tokenSymbol' },
+      { label: 'Token Type', value: 'tokenType' },
+    ];
+
+    const parser = new Parser({ fields });
+    const csv = parser.parse(campaigns);
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('campaigns_export.csv');
+    return res.send(csv);
+  } catch (err) {
+    console.error('Export Campaigns Error:', err);
+    res.status(500).send('Failed to export campaigns.');
+  }
+});
+
+// =====================
+// EXPORT USERS CSV
+// =====================
+app.get('/admin/users/export', isLoggedIn, async (req, res) => {
+  try {
+    const users = await User.find();
+
+    const fields = [
+      { label: 'Username', value: 'username' },
+      { label: 'Email', value: 'email' },
+      { label: 'KYC Status', value: 'kycStatus' },
+      { label: 'Wallet Address', value: 'walletAddress' },
+      { label: 'Joined', value: row => row.dateCreated?.toISOString() || '' }
+    ];
+
+    const parser = new Parser({ fields });
+    const csv = parser.parse(users);
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('users_export.csv');
+    return res.send(csv);
+  } catch (err) {
+    console.error('Export Users Error:', err);
+    res.status(500).send('Failed to export users.');
+  }
+});
+
+
+
+
 
 app.use((err, req, res, next) => {
   if (err.name === 'CastError' && err.kind === 'ObjectId') {
