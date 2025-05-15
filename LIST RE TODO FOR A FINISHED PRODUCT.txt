@@ -7,14 +7,6 @@ email forgot password
 
 
 ........................................................................
-finih the admin page...... ................✅ 3. Admin Features
- Admin panel to view:
-
-All campaigns
-
-All investments
-
-be able to vies documents
 
 All NFTs minted
 
@@ -43,9 +35,6 @@ Cache token data in the DB to prevent multiple blockchain reads on profile load.
 
 
 ✅ 4. Campaign & Investment Flow
-✔ Campaign creation with tokenomics ✅
-
-✔ Investment triggers NFT + database update ✅
 
 ❗ Add investment cap enforcement based on campaign goal
 

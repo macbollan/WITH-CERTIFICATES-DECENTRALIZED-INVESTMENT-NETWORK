@@ -1,0 +1,598 @@
+//+------------------------------------------------------------------+
+//|                  Smart Risk Manager EA - Final Fixed Version     |
+//|                     (c) 2024, Forex EA Developer                 |
+//+------------------------------------------------------------------+
+#property strict
+#include <Trade\Trade.mqh>
+
+//--- Input Parameters
+input double DefaultRiskPercent = 1.0;    // Default risk percentage
+input double DefaultRiskAmount = 100.0;   // Default risk amount
+input int Slippage = 3;                   // Maximum allowed slippage
+input bool UseCommissionInCalc = true;    // Include commission in risk calc
+input bool DefaultUsePercentageRisk = true; // Default risk mode (true=%, false=$)
+
+//--- Global Variables
+CTrade trade;
+double RiskPercent = DefaultRiskPercent;
+double RiskAmount = DefaultRiskAmount;
+bool UsePercentageRisk = DefaultUsePercentageRisk;
+bool isUserEditing = false; // Solution 2: Track user input state
+double StopLossPrice = 0;
+double TakeProfitPrice = 0;
+double EntryPrice = 0;
+double CalculatedLotSize = 0;
+
+//--- Order Types
+enum OrderTypeCustom { MarketBuy, MarketSell, BuyStop, SellStop };
+OrderTypeCustom SelectedOrderType = MarketBuy;
+
+//--- GUI Constants
+string PANEL_PREFIX = "RISK_EA_";
+string SL_LINE = PANEL_PREFIX + "SL_LINE";
+string TP_LINE = PANEL_PREFIX + "TP_LINE";
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   EventSetMillisecondTimer(100); // Update 10 times per second
+   DeleteGUI();
+   DrawGUI();
+   DrawLines();
+   return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+   EventKillTimer();
+   DeleteGUI();
+   DeleteLines();
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   if(!isUserEditing) // Only update if user isn't editing
+   {
+      UpdateLinePrices();
+      CalculateLotSize();
+      UpdateGUI();
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Timer function                                                   |
+//+------------------------------------------------------------------+
+void OnTimer()
+{
+   if(!isUserEditing) // Only update if user isn't editing
+   {
+      UpdateLinePrices();
+      CalculateLotSize();
+      UpdateGUI();
+   }
+}
+
+//+------------------------------------------------------------------+
+//| ChartEvent function                                              |
+//+------------------------------------------------------------------+
+void OnChartEvent(const int id,
+                 const long &lparam,
+                 const double &dparam,
+                 const string &sparam)
+{
+   // Handle button clicks
+   if(id == CHARTEVENT_OBJECT_CLICK)
+   {
+      if(sparam == PANEL_PREFIX + "ORDER_TYPE")
+      {
+         SelectedOrderType = (OrderTypeCustom)((SelectedOrderType + 1) % 4);
+         DrawLines();
+         UpdateGUI();
+      }
+      else if(sparam == PANEL_PREFIX + "EXECUTE")
+      {
+         ExecuteOrder();
+      }
+      else if(sparam == PANEL_PREFIX + "RISK_MODE")
+      {
+         UsePercentageRisk = !UsePercentageRisk;
+         ObjectSetString(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_TEXT, 
+                        DoubleToString(UsePercentageRisk ? RiskPercent : RiskAmount, 2));
+         UpdateGUI();
+      }
+      else if(sparam == PANEL_PREFIX + "RISK_INPUT")
+      {
+         isUserEditing = true; // User started editing (Solution 2)
+      }
+   }
+   // Handle risk input changes - FIXED VERSION (Solution 1 + 2)
+   else if(id == CHARTEVENT_OBJECT_ENDEDIT && sparam == PANEL_PREFIX + "RISK_INPUT")
+   {
+      string val = ObjectGetString(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_TEXT);
+      double newValue = NormalizeDouble(StringToDouble(val), 2);
+      
+      // Debug print to verify values
+      Print("User input: ", val, " Parsed as: ", newValue);
+      
+      if(UsePercentageRisk)
+      {
+         if(newValue > 0 && newValue <= 100)
+         {
+            RiskPercent = newValue;
+            Print("Updated RiskPercent to: ", RiskPercent);
+         }
+         else
+         {
+            Print("Invalid percentage input, keeping previous value: ", RiskPercent);
+         }
+         // Always show current value (Solution 1)
+         ObjectSetString(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_TEXT, DoubleToString(RiskPercent, 2));
+      }
+      else
+      {
+         if(newValue > 0)
+         {
+            RiskAmount = newValue;
+            Print("Updated RiskAmount to: ", RiskAmount);
+         }
+         else
+         {
+            Print("Invalid amount input, keeping previous value: ", RiskAmount);
+         }
+         // Always show current value (Solution 1)
+         ObjectSetString(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_TEXT, DoubleToString(RiskAmount, 2));
+      }
+      
+      isUserEditing = false; // Editing finished (Solution 2)
+      CalculateLotSize();
+      UpdateGUI();
+   }
+   // Handle line dragging
+   else if(id == CHARTEVENT_OBJECT_DRAG)
+   {
+      if(sparam == SL_LINE || sparam == TP_LINE)
+      {
+         UpdateLinePrices();
+         CalculateLotSize();
+         UpdateGUI();
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Draw the GUI elements                                            |
+//+------------------------------------------------------------------+
+void DrawGUI()
+{
+   int x = 10, y = 20;
+   int elementHeight = 20;
+   int elementWidth = 120;
+   int smallWidth = 60;
+   int buttonHeight = 30;
+
+   // Background
+   ObjectCreate(0, PANEL_PREFIX + "BG", OBJ_RECTANGLE_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, PANEL_PREFIX + "BG", OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, PANEL_PREFIX + "BG", OBJPROP_XDISTANCE, x-5);
+   ObjectSetInteger(0, PANEL_PREFIX + "BG", OBJPROP_YDISTANCE, y-5);
+   ObjectSetInteger(0, PANEL_PREFIX + "BG", OBJPROP_XSIZE, 240);
+   ObjectSetInteger(0, PANEL_PREFIX + "BG", OBJPROP_YSIZE, 180);
+   ObjectSetInteger(0, PANEL_PREFIX + "BG", OBJPROP_BGCOLOR, clrDarkSlateGray);
+   ObjectSetInteger(0, PANEL_PREFIX + "BG", OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, PANEL_PREFIX + "BG", OBJPROP_BORDER_COLOR, clrGray);
+
+   // Title
+   ObjectCreate(0, PANEL_PREFIX + "TITLE", OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, PANEL_PREFIX + "TITLE", OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, PANEL_PREFIX + "TITLE", OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, PANEL_PREFIX + "TITLE", OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, PANEL_PREFIX + "TITLE", OBJPROP_COLOR, clrGold);
+   ObjectSetInteger(0, PANEL_PREFIX + "TITLE", OBJPROP_FONTSIZE, 11);
+   ObjectSetString(0, PANEL_PREFIX + "TITLE", OBJPROP_TEXT, "💰 Smart Risk Manager");
+
+   // Order Type Button
+   ObjectCreate(0, PANEL_PREFIX + "ORDER_TYPE", OBJ_BUTTON, 0, 0, 0);
+   ObjectSetInteger(0, PANEL_PREFIX + "ORDER_TYPE", OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, PANEL_PREFIX + "ORDER_TYPE", OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, PANEL_PREFIX + "ORDER_TYPE", OBJPROP_YDISTANCE, y + 30);
+   ObjectSetInteger(0, PANEL_PREFIX + "ORDER_TYPE", OBJPROP_XSIZE, elementWidth);
+   ObjectSetInteger(0, PANEL_PREFIX + "ORDER_TYPE", OBJPROP_YSIZE, elementHeight);
+   ObjectSetInteger(0, PANEL_PREFIX + "ORDER_TYPE", OBJPROP_BGCOLOR, clrSteelBlue);
+   ObjectSetString(0, PANEL_PREFIX + "ORDER_TYPE", OBJPROP_TEXT, "Type: Buy");
+
+   // Risk Mode Button
+   ObjectCreate(0, PANEL_PREFIX + "RISK_MODE", OBJ_BUTTON, 0, 0, 0);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_MODE", OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_MODE", OBJPROP_XDISTANCE, x + elementWidth + 10);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_MODE", OBJPROP_YDISTANCE, y + 30);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_MODE", OBJPROP_XSIZE, smallWidth);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_MODE", OBJPROP_YSIZE, elementHeight);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_MODE", OBJPROP_BGCOLOR, clrDarkOrange);
+   ObjectSetString(0, PANEL_PREFIX + "RISK_MODE", OBJPROP_TEXT, UsePercentageRisk ? "%" : "$");
+
+   // Risk Input
+   ObjectCreate(0, PANEL_PREFIX + "RISK_INPUT", OBJ_EDIT, 0, 0, 0);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_YDISTANCE, y + 60);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_XSIZE, smallWidth);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_YSIZE, elementHeight);
+   ObjectSetString(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_TEXT, DoubleToString(UsePercentageRisk ? RiskPercent : RiskAmount, 2));
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_ALIGN, ALIGN_CENTER);
+
+   // Risk Label
+   ObjectCreate(0, PANEL_PREFIX + "RISK_LABEL", OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_LABEL", OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_LABEL", OBJPROP_XDISTANCE, x + smallWidth + 5);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_LABEL", OBJPROP_YDISTANCE, y + 60);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_LABEL", OBJPROP_COLOR, clrWhite);
+   ObjectSetString(0, PANEL_PREFIX + "RISK_LABEL", OBJPROP_TEXT, UsePercentageRisk ? "% Risk" : "$ Risk");
+
+   // Lots Label
+   ObjectCreate(0, PANEL_PREFIX + "LOTS_LABEL", OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, PANEL_PREFIX + "LOTS_LABEL", OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, PANEL_PREFIX + "LOTS_LABEL", OBJPROP_XDISTANCE, x + 130);
+   ObjectSetInteger(0, PANEL_PREFIX + "LOTS_LABEL", OBJPROP_YDISTANCE, y + 60);
+   ObjectSetInteger(0, PANEL_PREFIX + "LOTS_LABEL", OBJPROP_COLOR, clrLime);
+   ObjectSetString(0, PANEL_PREFIX + "LOTS_LABEL", OBJPROP_TEXT, "Lots: 0.00");
+
+   // Risk Amount Label
+   ObjectCreate(0, PANEL_PREFIX + "RISK_AMOUNT", OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_AMOUNT", OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_AMOUNT", OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_AMOUNT", OBJPROP_YDISTANCE, y + 90);
+   ObjectSetInteger(0, PANEL_PREFIX + "RISK_AMOUNT", OBJPROP_COLOR, clrGold);
+   ObjectSetString(0, PANEL_PREFIX + "RISK_AMOUNT", OBJPROP_TEXT, "Risk: $0.00");
+
+   // Potential Profit Label
+   ObjectCreate(0, PANEL_PREFIX + "PROFIT_LABEL", OBJ_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, PANEL_PREFIX + "PROFIT_LABEL", OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, PANEL_PREFIX + "PROFIT_LABEL", OBJPROP_XDISTANCE, x + 130);
+   ObjectSetInteger(0, PANEL_PREFIX + "PROFIT_LABEL", OBJPROP_YDISTANCE, y + 90);
+   ObjectSetInteger(0, PANEL_PREFIX + "PROFIT_LABEL", OBJPROP_COLOR, clrAqua);
+   ObjectSetString(0, PANEL_PREFIX + "PROFIT_LABEL", OBJPROP_TEXT, "Profit: $0.00");
+
+   // Execute Button
+   ObjectCreate(0, PANEL_PREFIX + "EXECUTE", OBJ_BUTTON, 0, 0, 0);
+   ObjectSetInteger(0, PANEL_PREFIX + "EXECUTE", OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetInteger(0, PANEL_PREFIX + "EXECUTE", OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, PANEL_PREFIX + "EXECUTE", OBJPROP_YDISTANCE, y + 120);
+   ObjectSetInteger(0, PANEL_PREFIX + "EXECUTE", OBJPROP_XSIZE, 230);
+   ObjectSetInteger(0, PANEL_PREFIX + "EXECUTE", OBJPROP_YSIZE, buttonHeight);
+   ObjectSetInteger(0, PANEL_PREFIX + "EXECUTE", OBJPROP_BGCOLOR, clrDodgerBlue);
+   ObjectSetInteger(0, PANEL_PREFIX + "EXECUTE", OBJPROP_COLOR, clrWhite);
+   ObjectSetString(0, PANEL_PREFIX + "EXECUTE", OBJPROP_TEXT, "🚀 EXECUTE TRADE");
+}
+
+//+------------------------------------------------------------------+
+//| Draw the price lines                                             |
+//+------------------------------------------------------------------+
+void DrawLines()
+{
+   if(SelectedOrderType <= MarketSell) // Market orders
+   {
+      EntryPrice = SymbolInfoDouble(_Symbol, SelectedOrderType == MarketBuy ? SYMBOL_ASK : SYMBOL_BID);
+      StopLossPrice = SelectedOrderType == MarketBuy ? EntryPrice - 100 * _Point : EntryPrice + 100 * _Point;
+      TakeProfitPrice = SelectedOrderType == MarketBuy ? EntryPrice + 100 * _Point : EntryPrice - 100 * _Point;
+   }
+   else // Pending orders
+   {
+      double currentPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      EntryPrice = SelectedOrderType == BuyStop ? currentPrice + 100 * _Point : currentPrice - 100 * _Point;
+      StopLossPrice = SelectedOrderType == BuyStop ? EntryPrice - 100 * _Point : EntryPrice + 100 * _Point;
+      TakeProfitPrice = SelectedOrderType == BuyStop ? EntryPrice + 100 * _Point : EntryPrice - 100 * _Point;
+   }
+
+   // Stop Loss Line
+   ObjectCreate(0, SL_LINE, OBJ_HLINE, 0, 0, StopLossPrice);
+   ObjectSetInteger(0, SL_LINE, OBJPROP_COLOR, clrRed);
+   ObjectSetInteger(0, SL_LINE, OBJPROP_WIDTH, 2);
+   ObjectSetInteger(0, SL_LINE, OBJPROP_STYLE, STYLE_DOT);
+   ObjectSetInteger(0, SL_LINE, OBJPROP_SELECTABLE, true);
+   ObjectSetInteger(0, SL_LINE, OBJPROP_SELECTED, true);
+   ObjectSetString(0, SL_LINE, OBJPROP_TEXT, "Stop Loss");
+
+   // Take Profit Line
+   ObjectCreate(0, TP_LINE, OBJ_HLINE, 0, 0, TakeProfitPrice);
+   ObjectSetInteger(0, TP_LINE, OBJPROP_COLOR, clrLime);
+   ObjectSetInteger(0, TP_LINE, OBJPROP_WIDTH, 2);
+   ObjectSetInteger(0, TP_LINE, OBJPROP_STYLE, STYLE_DOT);
+   ObjectSetInteger(0, TP_LINE, OBJPROP_SELECTABLE, true);
+   ObjectSetInteger(0, TP_LINE, OBJPROP_SELECTED, true);
+   ObjectSetString(0, TP_LINE, OBJPROP_TEXT, "Take Profit");
+}
+
+//+------------------------------------------------------------------+
+//| Delete GUI elements                                              |
+//+------------------------------------------------------------------+
+void DeleteGUI()
+{
+   string objs[] = {
+      PANEL_PREFIX + "BG",
+      PANEL_PREFIX + "TITLE",
+      PANEL_PREFIX + "ORDER_TYPE",
+      PANEL_PREFIX + "RISK_MODE",
+      PANEL_PREFIX + "RISK_INPUT",
+      PANEL_PREFIX + "RISK_LABEL",
+      PANEL_PREFIX + "LOTS_LABEL",
+      PANEL_PREFIX + "RISK_AMOUNT",
+      PANEL_PREFIX + "PROFIT_LABEL",
+      PANEL_PREFIX + "EXECUTE"
+   };
+
+   for(int i = 0; i < ArraySize(objs); i++)
+      ObjectDelete(0, objs[i]);
+}
+
+//+------------------------------------------------------------------+
+//| Delete price lines                                               |
+//+------------------------------------------------------------------+
+void DeleteLines()
+{
+   ObjectDelete(0, SL_LINE);
+   ObjectDelete(0, TP_LINE);
+}
+
+//+------------------------------------------------------------------+
+//| Update GUI elements                                              |
+//+------------------------------------------------------------------+
+void UpdateGUI()
+{
+   // Only update risk input if user isn't editing (Solution 2)
+   if(!isUserEditing)
+   {
+      ObjectSetString(0, PANEL_PREFIX + "RISK_INPUT", OBJPROP_TEXT, 
+                     DoubleToString(UsePercentageRisk ? RiskPercent : RiskAmount, 2));
+   }
+   
+   // Update risk mode button
+   ObjectSetString(0, PANEL_PREFIX + "RISK_MODE", OBJPROP_TEXT, UsePercentageRisk ? "%" : "$");
+   ObjectSetString(0, PANEL_PREFIX + "RISK_LABEL", OBJPROP_TEXT, UsePercentageRisk ? "% Risk" : "$ Risk");
+   
+   // Update other elements
+   string typeStr = "";
+   switch(SelectedOrderType)
+   {
+      case MarketBuy: typeStr = "Market Buy"; break;
+      case MarketSell: typeStr = "Market Sell"; break;
+      case BuyStop: typeStr = "Buy Stop"; break;
+      case SellStop: typeStr = "Sell Stop"; break;
+   }
+
+   ObjectSetString(0, PANEL_PREFIX + "ORDER_TYPE", OBJPROP_TEXT, "Type: " + typeStr);
+   ObjectSetString(0, PANEL_PREFIX + "LOTS_LABEL", OBJPROP_TEXT, "Lots: " + DoubleToString(CalculatedLotSize, 2));
+   
+   double riskMoney = UsePercentageRisk ? 
+                     AccountInfoDouble(ACCOUNT_BALANCE) * RiskPercent / 100.0 : 
+                     RiskAmount;
+   ObjectSetString(0, PANEL_PREFIX + "RISK_AMOUNT", OBJPROP_TEXT, "Risk: $" + DoubleToString(riskMoney, 2));
+   
+   if(TakeProfitPrice > 0 && EntryPrice > 0)
+   {
+      double profitDistance = SelectedOrderType == MarketBuy || SelectedOrderType == BuyStop ? 
+                            (TakeProfitPrice - EntryPrice) : 
+                            (EntryPrice - TakeProfitPrice);
+      double profitPoints = profitDistance / _Point;
+      double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+      double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+      double profitMoney = profitPoints * tickValue * tickSize * CalculatedLotSize;
+      
+      string accountCurrency = AccountInfoString(ACCOUNT_CURRENCY);
+      string quoteCurrency = StringSubstr(_Symbol, 3, 3);
+      
+      if(accountCurrency != quoteCurrency)
+      {
+         string conversionPair = quoteCurrency + accountCurrency;
+         if(SymbolInfoDouble(conversionPair, SYMBOL_BID) > 0)
+            profitMoney *= SymbolInfoDouble(conversionPair, SYMBOL_BID);
+         else
+         {
+            conversionPair = accountCurrency + quoteCurrency;
+            if(SymbolInfoDouble(conversionPair, SYMBOL_BID) > 0)
+               profitMoney /= SymbolInfoDouble(conversionPair, SYMBOL_BID);
+         }
+      }
+      
+      ObjectSetString(0, PANEL_PREFIX + "PROFIT_LABEL", OBJPROP_TEXT, "Profit: $" + DoubleToString(profitMoney, 2));
+   }
+   else
+   {
+      ObjectSetString(0, PANEL_PREFIX + "PROFIT_LABEL", OBJPROP_TEXT, "Profit: $0.00");
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Update line prices                                               |
+//+------------------------------------------------------------------+
+void UpdateLinePrices()
+{
+   // For market orders, update entry price to current price
+   if(SelectedOrderType <= MarketSell)
+   {
+      EntryPrice = SymbolInfoDouble(_Symbol, SelectedOrderType == MarketBuy ? SYMBOL_ASK : SYMBOL_BID);
+   }
+   
+   StopLossPrice = ObjectGetDouble(0, SL_LINE, OBJPROP_PRICE);
+   TakeProfitPrice = ObjectGetDouble(0, TP_LINE, OBJPROP_PRICE);
+}
+
+//+------------------------------------------------------------------+
+//| Calculate position size based on risk                            |
+//+------------------------------------------------------------------+
+void CalculateLotSize()
+{
+   if(EntryPrice == 0 || StopLossPrice == 0) 
+   {
+      CalculatedLotSize = 0;
+      return;
+   }
+
+   // Calculate SL distance in points
+   double sl_distance = 0;
+   if(SelectedOrderType == MarketBuy || SelectedOrderType == BuyStop)
+      sl_distance = (EntryPrice - StopLossPrice) / _Point;
+   else
+      sl_distance = (StopLossPrice - EntryPrice) / _Point;
+
+   if(sl_distance <= 0) 
+   {
+      CalculatedLotSize = 0;
+      return;
+   }
+
+   // Get account currency and conversion rates
+   string accountCurrency = AccountInfoString(ACCOUNT_CURRENCY);
+   string baseCurrency = StringSubstr(_Symbol, 0, 3);
+   string quoteCurrency = StringSubstr(_Symbol, 3, 3);
+
+   // Calculate tick value in account currency
+   double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+
+   // If account currency differs from quote currency, we need conversion
+   if(accountCurrency != quoteCurrency)
+   {
+      string conversionPair = quoteCurrency + accountCurrency;
+      if(SymbolInfoDouble(conversionPair, SYMBOL_BID) > 0)
+         tickValue *= SymbolInfoDouble(conversionPair, SYMBOL_BID);
+      else
+      {
+         conversionPair = accountCurrency + quoteCurrency;
+         if(SymbolInfoDouble(conversionPair, SYMBOL_BID) > 0)
+            tickValue /= SymbolInfoDouble(conversionPair, SYMBOL_BID);
+      }
+   }
+
+   // Include commission if enabled
+   double commissionPerLot = 0;
+   if(UseCommissionInCalc)
+   {
+      MqlTradeRequest request = {};
+      MqlTradeResult result = {};
+      request.action = TRADE_ACTION_DEAL;
+      request.symbol = _Symbol;
+      request.volume = 1.0;
+      request.type = SelectedOrderType <= MarketSell ?
+                   (SelectedOrderType == MarketBuy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL) :
+                   (SelectedOrderType == BuyStop ? ORDER_TYPE_BUY_STOP : ORDER_TYPE_SELL_STOP);
+      request.price = EntryPrice;
+      request.sl = StopLossPrice;
+
+      double margin;
+      if(OrderCalcMargin(request.type, _Symbol, 1.0, EntryPrice, margin) && 
+         OrderCalcProfit(request.type, _Symbol, 1.0, EntryPrice, StopLossPrice, commissionPerLot))
+      {
+         commissionPerLot = MathAbs(commissionPerLot);
+      }
+   }
+
+   // Calculate precise lot size
+   double riskMoney = UsePercentageRisk ? 
+                     AccountInfoDouble(ACCOUNT_BALANCE) * RiskPercent / 100.0 : 
+                     RiskAmount;
+   double moneyAtRiskPerLot = sl_distance * tickValue * tickSize + commissionPerLot;
+
+   if(moneyAtRiskPerLot <= 0) 
+   {
+      CalculatedLotSize = 0;
+      return;
+   }
+
+   CalculatedLotSize = riskMoney / moneyAtRiskPerLot;
+
+   // Normalize to broker's lot step
+   double lotStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+   CalculatedLotSize = MathFloor(CalculatedLotSize / lotStep) * lotStep;
+
+   // Apply min/max limits
+   double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+   CalculatedLotSize = MathMax(minLot, MathMin(maxLot, CalculatedLotSize));
+
+   // Round to 2 decimal places for display
+   CalculatedLotSize = NormalizeDouble(CalculatedLotSize, 2);
+}
+
+//+------------------------------------------------------------------+
+//| Execute the trade                                                |
+//+------------------------------------------------------------------+
+void ExecuteOrder()
+{
+   if(CalculatedLotSize <= 0.0)
+   {
+      Alert("Invalid lot size!");
+      return;
+   }
+
+   // For market orders, update entry price to current price
+   if(SelectedOrderType <= MarketSell)
+   {
+      EntryPrice = SymbolInfoDouble(_Symbol, SelectedOrderType == MarketBuy ? SYMBOL_ASK : SYMBOL_BID);
+   }
+
+   // Validate prices
+   if(EntryPrice <= 0 || (StopLossPrice <= 0 && StopLossPrice != 0) || (TakeProfitPrice <= 0 && TakeProfitPrice != 0))
+   {
+      Alert("Invalid price levels!");
+      return;
+   }
+
+   // Check minimum stop distance
+   double minStopDistance = SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL) * _Point;
+   double currentStopDistance = MathAbs(EntryPrice - StopLossPrice);
+   if(currentStopDistance < minStopDistance)
+   {
+      Alert("Stop Loss too close! Minimum distance: ", minStopDistance / _Point, " points");
+      return;
+   }
+
+   trade.SetDeviationInPoints(Slippage);
+   trade.SetTypeFilling(ORDER_FILLING_FOK); // Fill or Kill execution
+
+   bool ok = false;
+   string orderTypeStr = "";
+
+   switch(SelectedOrderType)
+   {
+      case MarketBuy:
+         ok = trade.Buy(CalculatedLotSize, _Symbol, 0, StopLossPrice, TakeProfitPrice, "Buy");
+         orderTypeStr = "Market Buy";
+         break;
+      case MarketSell:
+         ok = trade.Sell(CalculatedLotSize, _Symbol, 0, StopLossPrice, TakeProfitPrice, "Sell");
+         orderTypeStr = "Market Sell";
+         break;
+      case BuyStop:
+         ok = trade.BuyStop(CalculatedLotSize, EntryPrice, _Symbol, StopLossPrice, TakeProfitPrice, ORDER_TIME_GTC, 0, "BuyStop");
+         orderTypeStr = "Buy Stop";
+         break;
+      case SellStop:
+         ok = trade.SellStop(CalculatedLotSize, EntryPrice, _Symbol, StopLossPrice, TakeProfitPrice, ORDER_TIME_GTC, 0, "SellStop");
+         orderTypeStr = "Sell Stop";
+         break;
+   }
+
+   if(!ok)
+   {
+      Alert("Trade failed: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+   }
+   else
+   {
+      Print("Trade executed: ", orderTypeStr,
+            " | Lots: ", CalculatedLotSize,
+            " | Entry: ", EntryPrice,
+            " | SL: ", StopLossPrice,
+            " | TP: ", TakeProfitPrice);
+
+      // Reset lines for next trade
+      DrawLines();
+   }
+}
