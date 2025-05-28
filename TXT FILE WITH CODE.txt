@@ -371,6 +371,7 @@
                                     <%= campaign.status.toUpperCase() %>
                                 </span>
                             </div>
+
                             <p class="card-text text-muted mb-3" style="min-height: 60px;">
                                 <%= campaign.description.substring(0, 100) %><%= campaign.description.length > 100 ? '...' : '' %>
                             </p>

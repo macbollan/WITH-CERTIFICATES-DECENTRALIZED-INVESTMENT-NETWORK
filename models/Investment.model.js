@@ -9,6 +9,15 @@ const InvestmentSchema = new mongoose.Schema({
   blockchainCampaignId: { type: String }, // Stores the hex ID
   tokenId: { type: Number, default:0 },
   
+    paymentStatus: {
+    type: String,
+    enum: ["pending", "completed", "failed"],
+    default: "pending"
+  },
+  paynowReference: String,
+  paynowPollUrl: String,
+
+
   // Token details snapshot at time of investment
   tokenDetails: {
     name: { type: String, required: true },

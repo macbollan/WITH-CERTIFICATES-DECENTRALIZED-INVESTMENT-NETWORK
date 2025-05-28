@@ -36,7 +36,7 @@ status: {
   type: String,
   enum: ["active", "funded", "closed", "banned", "rejected"],
   default: "active"
-}
+},
 
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   investors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],

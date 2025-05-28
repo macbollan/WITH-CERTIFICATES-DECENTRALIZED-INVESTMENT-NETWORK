@@ -44,6 +44,8 @@ Cache token data in the DB to prevent multiple blockchain reads on profile load.
  Replace raw alerts with modals or toast messages
 
  Add loading indicators during blockchain transactions
+ implement ecocash stuff
+ implement images uploaded to cloudinary....
 
  Handle edge cases: no wallet, transaction rejected, etc.
 
@@ -51,4 +53,5 @@ Cache token data in the DB to prevent multiple blockchain reads on profile load.
 ---make sure the admin can close campaigns
 --- updload images to cloudinary for diployment
 --- ecocash payment gateway
+---- ratings in front
 
