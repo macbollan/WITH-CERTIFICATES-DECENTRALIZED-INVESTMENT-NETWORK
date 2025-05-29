@@ -190,43 +190,29 @@
         padding: 2rem;
     }
 
-    /* Form Field Styling */
-    .form-control-enhanced {
-        border-radius: 8px;
-        padding: 12px 15px;
+    /* Payment Method Cards */
+    .payment-method-card {
         border: 1px solid #e0e0e0;
-        transition: all 0.3s ease;
-    }
-
-    .form-control-enhanced:focus {
-        border-color: #6a11cb;
-        box-shadow: 0 0 0 0.25rem rgba(106, 17, 203, 0.25);
-    }
-
-    /* Token Type Specific Styling */
-    .token-type-selector {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-
-    .token-type-option {
-        flex: 1;
-        text-align: center;
+        border-radius: 10px;
         padding: 15px;
-        border-radius: 8px;
-        cursor: pointer;
+        margin-bottom: 15px;
         transition: all 0.3s ease;
-        border: 2px solid transparent;
+        cursor: pointer;
     }
 
-    .token-type-option:hover {
-        transform: translateY(-3px);
-    }
-
-    .token-type-option.active {
+    .payment-method-card:hover {
         border-color: #6a11cb;
-        background-color: rgba(106, 17, 203, 0.1);
+        box-shadow: 0 5px 15px rgba(106, 17, 203, 0.1);
+    }
+
+    .payment-method-card.active {
+        border: 2px solid #6a11cb;
+        background-color: rgba(106, 17, 203, 0.05);
+    }
+
+    .payment-method-icon {
+        font-size: 1.5rem;
+        margin-right: 10px;
     }
 
     /* Responsive Adjustments */
@@ -242,10 +228,50 @@
         .modal-body-enhancement {
             padding: 1.5rem;
         }
-        
-        .token-type-selector {
-            flex-direction: column;
-        }
+    }
+
+    /* Animated Checkmark */
+    .checkmark {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: block;
+        stroke-width: 4;
+        stroke: #fff;
+        stroke-miterlimit: 10;
+        margin: 10% auto;
+        box-shadow: inset 0px 0px 0px #6a11cb;
+        animation: fill 0.4s ease-in-out 0.4s forwards, scale 0.3s ease-in-out 0.9s both;
+    }
+
+    .checkmark__circle {
+        stroke-dasharray: 166;
+        stroke-dashoffset: 166;
+        stroke-width: 4;
+        stroke-miterlimit: 10;
+        stroke: #6a11cb;
+        fill: none;
+        animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+    }
+
+    .checkmark__check {
+        transform-origin: 50% 50%;
+        stroke-dasharray: 48;
+        stroke-dashoffset: 48;
+        animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+    }
+
+    @keyframes stroke {
+        100% { stroke-dashoffset: 0; }
+    }
+
+    @keyframes scale {
+        0%, 100% { transform: none; }
+        50% { transform: scale3d(1.1, 1.1, 1); }
+    }
+
+    @keyframes fill {
+        100% { box-shadow: inset 0px 0px 0px 30px #6a11cb; }
     }
 </style>
 
@@ -391,12 +417,10 @@
                             
                             <% const remaining = campaign.goalAmount - campaign.amountRaised; %>
                             <% if (remaining <= 500 && campaign.goalAmount > campaign.amountRaised) { %> <!-- or a % threshold -->
-
                             <div class="alert alert-warning p-1 mt-2 small">
                                 Only $<%= remaining.toFixed(2) %> left to reach the goal!
                             </div>
                             <% } %>
-
 
                             <!-- Action Buttons -->
                             <div class="d-grid gap-2">
@@ -424,7 +448,6 @@
                                             <i class="bi bi-check2-circle"></i> Funding Complete
                                         </button>
                                     <% } else if (currentUser && !currentUser._id.equals(campaign.owner._id)) { %>
-
                                     <button class="btn btn-success glow-on-hover" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#investModal"
@@ -441,8 +464,7 @@
                                             )">
                                         <i class="bi bi-currency-dollar"></i> Invest Now
                                     </button>
-                                    <!-- Show Invest Button -->
-                                 <% } %>
+                                    <% } %>
                                 <% } else { %>
                                     <a href="/login?redirect=/campaigns" class="btn btn-warning glow-on-hover">
                                         <i class="bi bi-box-arrow-in-right"></i> Login to Invest
@@ -456,143 +478,143 @@
         </div>
     </div>
 
- <!-- Create Campaign Modal (Complete) -->
-<div class="modal fade" id="createCampaignModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content modal-enhancement">
-            <div class="modal-header modal-header-enhancement">
-                <h5 class="modal-title">Create New Campaign</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body modal-body-enhancement">
-                <form id="createCampaignForm" action="/campaigns/create" method="POST" enctype="multipart/form-data" onsubmit="return validateCampaignForm()">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="title" class="form-label">Campaign Title *</label>
-                            <input type="text" class="form-control form-control-enhanced" id="title" name="title" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="goalAmount" class="form-label">Goal Amount ($) *</label>
-                            <input type="number" class="form-control form-control-enhanced" id="goalAmount" name="goalAmount" min="1" required>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description *</label>
-                        <textarea class="form-control form-control-enhanced" id="description" name="description" rows="4" required></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="campaignImage" class="form-label">Campaign Image</label>
-                        <input class="form-control form-control-enhanced" type="file" id="campaignImage" name="image" accept="image/*">
-                    </div>
-                    
-                    <!-- Token Type Selection -->
-                    <div class="mb-4">
-                        <label class="form-label">Token Type *</label>
-                        <div class="token-type-selector">
-                            <div class="token-type-option" data-type="profit" onclick="selectTokenType('profit')">
-                                <i class="bi bi-graph-up fs-4"></i>
-                                <h6 class="mt-2">Profit Share</h6>
-                                <small class="text-muted">Investors receive % of profits</small>
+    <!-- Create Campaign Modal (Complete) -->
+    <div class="modal fade" id="createCampaignModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content modal-enhancement">
+                <div class="modal-header modal-header-enhancement">
+                    <h5 class="modal-title">Create New Campaign</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body modal-body-enhancement">
+                    <form id="createCampaignForm" action="/campaigns/create" method="POST" enctype="multipart/form-data" onsubmit="return validateCampaignForm()">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="title" class="form-label">Campaign Title *</label>
+                                <input type="text" class="form-control form-control-enhanced" id="title" name="title" required>
                             </div>
-                            <div class="token-type-option" data-type="ownership" onclick="selectTokenType('ownership')">
-                                <i class="bi bi-building fs-4"></i>
-                                <h6 class="mt-2">Ownership</h6>
-                                <small class="text-muted">Investors receive equity stake</small>
-                            </div>
-                            <div class="token-type-option" data-type="hybrid" onclick="selectTokenType('hybrid')">
-                                <i class="bi bi-collection fs-4"></i>
-                                <h6 class="mt-2">Hybrid</h6>
-                                <small class="text-muted">Combination of ownership + rewards</small>
+                            <div class="col-md-6">
+                                <label for="goalAmount" class="form-label">Goal Amount ($) *</label>
+                                <input type="number" class="form-control form-control-enhanced" id="goalAmount" name="goalAmount" min="1" required>
                             </div>
                         </div>
-                        <input type="hidden" id="tokenType" name="tokenType" required>
-                    </div>
-                    
-                    <!-- Token Configuration -->
-                    <div class="card mb-3">
-                        <div class="card-header bg-light">
-                            <h5 class="mb-0">Token Configuration</h5>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description *</label>
+                            <textarea class="form-control form-control-enhanced" id="description" name="description" rows="4" required></textarea>
                         </div>
-                        <div class="card-body">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label for="tokenSymbol" class="form-label">Token Symbol *</label>
-                                    <input type="text" class="form-control form-control-enhanced" id="tokenSymbol" name="tokenSymbol" 
-                                        maxlength="8" required pattern="[A-Z0-9]{3,8}" placeholder="e.g., SOLAR">
+                        
+                        <div class="mb-3">
+                            <label for="campaignImage" class="form-label">Campaign Image</label>
+                            <input class="form-control form-control-enhanced" type="file" id="campaignImage" name="image" accept="image/*">
+                        </div>
+                        
+                        <!-- Token Type Selection -->
+                        <div class="mb-4">
+                            <label class="form-label">Token Type *</label>
+                            <div class="token-type-selector">
+                                <div class="token-type-option" data-type="profit" onclick="selectTokenType('profit')">
+                                    <i class="bi bi-graph-up fs-4"></i>
+                                    <h6 class="mt-2">Profit Share</h6>
+                                    <small class="text-muted">Investors receive % of profits</small>
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="totalTokens" class="form-label">Total Tokens *</label>
-                                    <input type="number" class="form-control form-control-enhanced" id="totalTokens" name="totalTokens" min="1" required>
+                                <div class="token-type-option" data-type="ownership" onclick="selectTokenType('ownership')">
+                                    <i class="bi bi-building fs-4"></i>
+                                    <h6 class="mt-2">Ownership</h6>
+                                    <small class="text-muted">Investors receive equity stake</small>
+                                </div>
+                                <div class="token-type-option" data-type="hybrid" onclick="selectTokenType('hybrid')">
+                                    <i class="bi bi-collection fs-4"></i>
+                                    <h6 class="mt-2">Hybrid</h6>
+                                    <small class="text-muted">Combination of ownership + rewards</small>
                                 </div>
                             </div>
-                            
-                            <!-- Profit Fields -->
-                            <div id="profitFields" class="token-fields" style="display:none;">
-                                <div class="row">
+                            <input type="hidden" id="tokenType" name="tokenType" required>
+                        </div>
+                        
+                        <!-- Token Configuration -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Token Configuration</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
                                     <div class="col-md-6">
-                                        <label for="profitSharePercentage" class="form-label">Profit Share % *</label>
-                                        <input type="number" class="form-control form-control-enhanced" id="profitSharePercentage" 
-                                            name="profitSharePercentage" min="1" max="100" value="10" required>
+                                        <label for="tokenSymbol" class="form-label">Token Symbol *</label>
+                                        <input type="text" class="form-control form-control-enhanced" id="tokenSymbol" name="tokenSymbol" 
+                                            maxlength="8" required pattern="[A-Z0-9]{3,8}" placeholder="e.g., SOLAR">
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="profitDistributionFrequency" class="form-label">Distribution *</label>
-                                        <select class="form-select form-control-enhanced" id="profitDistributionFrequency" 
-                                            name="profitDistributionFrequency" required>
-                                            <option value="monthly">Monthly</option>
-                                            <option value="quarterly" selected>Quarterly</option>
-                                            <option value="annually">Annually</option>
-                                        </select>
+                                        <label for="totalTokens" class="form-label">Total Tokens *</label>
+                                        <input type="number" class="form-control form-control-enhanced" id="totalTokens" name="totalTokens" min="1" required>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <!-- Ownership Fields -->
-                            <div id="ownershipFields" class="token-fields" style="display:none;">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label for="ownershipPercentage" class="form-label">Ownership % *</label>
-                                        <input type="number" class="form-control form-control-enhanced" id="ownershipPercentage" 
-                                            name="ownershipPercentage" min="1" max="100" value="10" required>
+                                
+                                <!-- Profit Fields -->
+                                <div id="profitFields" class="token-fields" style="display:none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="profitSharePercentage" class="form-label">Profit Share % *</label>
+                                            <input type="number" class="form-control form-control-enhanced" id="profitSharePercentage" 
+                                                name="profitSharePercentage" min="1" max="100" value="10" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="profitDistributionFrequency" class="form-label">Distribution *</label>
+                                            <select class="form-select form-control-enhanced" id="profitDistributionFrequency" 
+                                                name="profitDistributionFrequency" required>
+                                                <option value="monthly">Monthly</option>
+                                                <option value="quarterly" selected>Quarterly</option>
+                                                <option value="annually">Annually</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <div class="form-check mt-4 pt-2">
-                                            <input class="form-check-input" type="checkbox" id="votingRights" name="votingRights">
-                                            <label class="form-check-label" for="votingRights">Include Voting Rights</label>
+                                </div>
+                                
+                                <!-- Ownership Fields -->
+                                <div id="ownershipFields" class="token-fields" style="display:none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="ownershipPercentage" class="form-label">Ownership % *</label>
+                                            <input type="number" class="form-control form-control-enhanced" id="ownershipPercentage" 
+                                                name="ownershipPercentage" min="1" max="100" value="10" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check mt-4 pt-2">
+                                                <input class="form-check-input" type="checkbox" id="votingRights" name="votingRights">
+                                                <label class="form-check-label" for="votingRights">Include Voting Rights</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Hybrid Fields -->
+                                <div id="hybridFields" class="token-fields" style="display:none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="ownershipPerToken" class="form-label">Ownership Per Token *</label>
+                                            <input type="number" step="0.01" class="form-control form-control-enhanced" id="ownershipPerToken" 
+                                                name="ownershipPerToken" min="0.01" value="0.1" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="hybridRewardDescription" class="form-label">Reward Description *</label>
+                                            <input type="text" class="form-control form-control-enhanced" id="hybridRewardDescription" 
+                                                name="hybridRewardDescription" required>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Hybrid Fields -->
-                            <div id="hybridFields" class="token-fields" style="display:none;">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label for="ownershipPerToken" class="form-label">Ownership Per Token *</label>
-                                        <input type="number" step="0.01" class="form-control form-control-enhanced" id="ownershipPerToken" 
-                                            name="ownershipPerToken" min="0.01" value="0.1" required>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="hybridRewardDescription" class="form-label">Reward Description *</label>
-                                        <input type="text" class="form-control form-control-enhanced" id="hybridRewardDescription" 
-                                            name="hybridRewardDescription" required>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg" id="submitButton">
-                            <i class="bi bi-check-circle"></i> Create Campaign
-                        </button>
-                    </div>
-                </form>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitButton">
+                                <i class="bi bi-check-circle"></i> Create Campaign
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
     <!-- Edit Campaign Modal (Complete) -->
     <div class="modal fade" id="editCampaignModal" tabindex="-1" aria-hidden="true">
@@ -723,7 +745,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body modal-body-enhancement">
-                    <form id="investForm" action="/campaigns/invest" method="POST">
+                    <form id="investForm" method="POST">
                         <input type="hidden" id="campaignId" name="campaignId">
                         <input type="hidden" id="tokenType" name="tokenType">
                         
@@ -768,15 +790,67 @@
                                 <small class="text-muted" id="previewTokenValue">Enter amount to see details</small>
                             </div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="paymentMethod" class="form-label">Payment Method *</label>
-                            <select class="form-select form-control-enhanced" id="paymentMethod" name="paymentMethod" required>
-                                <option value="">Select payment method</option>
-                                <option value="crypto">Crypto (ETH)</option>
-                                <option value="fiat">Credit/Debit Card</option>
-                                <option value="wallet">Wallet Balance</option>
-                            </select>
+
+                        <!-- Payment Method Selection -->
+                        <div class="mb-4">
+                            <label class="form-label mb-3">Payment Method *</label>
+                            
+                            <div class="payment-method-card" onclick="selectPaymentMethod('ecocash')">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-phone payment-method-icon text-success"></i>
+                                    <div>
+                                        <h6 class="mb-1">EcoCash</h6>
+                                        <small class="text-muted">Pay via mobile money</small>
+                                    </div>
+                                </div>
+                                <div id="ecocashFields" class="mt-3" style="display: none;">
+                                    <div class="form-floating">
+                                        <input type="tel" name="mobileNumber" class="form-control" id="ecocashNumber" 
+                                               placeholder="0771234567" pattern="07[0-9]{8}">
+                                        <label for="ecocashNumber">EcoCash Number</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="payment-method-card" onclick="selectPaymentMethod('onemoney')">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-phone payment-method-icon text-primary"></i>
+                                    <div>
+                                        <h6 class="mb-1">OneMoney</h6>
+                                        <small class="text-muted">Pay via mobile money</small>
+                                    </div>
+                                </div>
+                                <div id="onemoneyFields" class="mt-3" style="display: none;">
+                                    <div class="form-floating">
+                                        <input type="tel" name="mobileNumber" class="form-control" id="onemoneyNumber" 
+                                               placeholder="0711234567" pattern="07[0-9]{8}">
+                                        <label for="onemoneyNumber">OneMoney Number</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="payment-method-card" onclick="selectPaymentMethod('visa')">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-credit-card payment-method-icon text-info"></i>
+                                    <div>
+                                        <h6 class="mb-1">Visa/Mastercard</h6>
+                                        <small class="text-muted">Pay with your card</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="payment-method-card" onclick="selectPaymentMethod('crypto')">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-currency-bitcoin payment-method-icon text-warning"></i>
+                                    <div>
+                                        <h6 class="mb-1">Crypto (ETH)</h6>
+                                        <small class="text-muted">Pay with cryptocurrency</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <input type="hidden" id="paymentMethod" name="paymentMethod" required>
+                            <input type="hidden" id="mobileNumber" name="mobileNumber">
                         </div>
                         
                         <div class="d-grid">
@@ -785,6 +859,23 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Success Modal -->
+    <div class="modal fade" id="paymentSuccessModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content text-center py-4">
+                <div class="modal-body">
+                    <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                        <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                        <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                    </svg>
+                    <h4 class="mb-3">Payment Successful!</h4>
+                    <p class="text-muted">Your investment is being processed. You'll receive your tokens shortly.</p>
+                    <button class="btn btn-primary w-100" data-bs-dismiss="modal">Continue</button>
                 </div>
             </div>
         </div>
@@ -862,6 +953,57 @@
             document.getElementById(`${type}Fields`).style.display = 'block';
         }
 
+        // Payment Method Selection
+        function selectPaymentMethod(method) {
+            // Update UI
+            document.querySelectorAll('.payment-method-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // Set hidden field value
+            document.getElementById('paymentMethod').value = method;
+            
+            // Hide all payment method fields
+            document.querySelectorAll('[id$="Fields"]').forEach(el => {
+                if (el.id.includes('Fields') && !el.id.includes('token')) {
+                    el.style.display = 'none';
+                }
+            });
+            
+            // Show fields for selected method if needed
+            if (method === 'ecocash') {
+                document.getElementById('ecocashFields').style.display = 'block';
+                document.getElementById('mobileNumber').value = document.getElementById('ecocashNumber').value;
+            } else if (method === 'onemoney') {
+                document.getElementById('onemoneyFields').style.display = 'block';
+                document.getElementById('mobileNumber').value = document.getElementById('onemoneyNumber').value;
+            }
+            
+            // Update form action
+            const form = document.getElementById('investForm');
+            const campaignId = document.getElementById('campaignId').value;
+            
+            if (method === 'crypto') {
+                form.action = '/campaigns/invest';
+            } else {
+                form.action = `/campaigns/${campaignId}/paynow`;
+            }
+        }
+
+        // Update mobile number when input changes
+        document.getElementById('ecocashNumber')?.addEventListener('input', function() {
+            if (document.getElementById('paymentMethod').value === 'ecocash') {
+                document.getElementById('mobileNumber').value = this.value;
+            }
+        });
+        
+        document.getElementById('onemoneyNumber')?.addEventListener('input', function() {
+            if (document.getElementById('paymentMethod').value === 'onemoney') {
+                document.getElementById('mobileNumber').value = this.value;
+            }
+        });
+
         // Load Edit Form Data
         function loadEditForm(campaignId) {
             fetch(`/api/campaigns/${campaignId}`)
@@ -914,9 +1056,19 @@
             document.getElementById('investForm').dataset.ownershipPercentage = ownershipPercentage;
             document.getElementById('investForm').dataset.ownershipPerToken = ownershipPerToken;
             
-            // Reset amount field
+            // Reset form
             document.getElementById('investAmount').value = '';
             document.getElementById('investRange').value = '1';
+            document.querySelectorAll('.payment-method-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.getElementById('paymentMethod').value = '';
+            document.querySelectorAll('[id$="Fields"]').forEach(el => {
+                if (el.id.includes('Fields') && !el.id.includes('token')) {
+                    el.style.display = 'none';
+                }
+            });
+            
             updateTokenPreview();
         }
 
@@ -960,6 +1112,45 @@
             document.querySelector('.progress-bar').style.width = `${progress}%`;
         }
 
+        // Form Submission Handler
+        document.getElementById('investForm')?.addEventListener('submit', function(e) {
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            
+            // Validate payment method
+            if (!paymentMethod) {
+                e.preventDefault();
+                alert('Please select a payment method');
+                return;
+            }
+            
+            // Validate mobile number for EcoCash/OneMoney
+            if (paymentMethod === 'ecocash' || paymentMethod === 'onemoney') {
+                const mobileNumber = document.getElementById('mobileNumber').value;
+                if (!mobileNumber || !/^07[0-9]{8}$/.test(mobileNumber)) {
+                    e.preventDefault();
+                    alert('Please enter a valid mobile number (e.g. 0771234567)');
+                    return;
+                }
+            }
+            
+            // Show loading state
+            const btn = this.querySelector('button[type="submit"]');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            btn.disabled = true;
+            
+            // For demo purposes, show success modal (remove in production)
+            if (paymentMethod !== 'crypto') {
+                e.preventDefault();
+                setTimeout(() => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('investModal'));
+                    if (modal) modal.hide();
+                    
+                    const successModal = new bootstrap.Modal(document.getElementById('paymentSuccessModal'));
+                    successModal.show();
+                }, 1500);
+            }
+        });
+
         // Delete Confirmation
         function confirmDelete(campaignId) {
             if (confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
@@ -987,182 +1178,6 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
             btn.disabled = true;
         });
-
-        document.getElementById('investForm')?.addEventListener('submit', function(e) {
-            const btn = this.querySelector('button[type="submit"]');
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-            btn.disabled = true;
-        });
     </script>
-
-    <script>
-// Enhanced token type selection
-function selectTokenType(type) {
-    // Update UI
-    document.querySelectorAll('.token-type-option').forEach(opt => {
-        opt.classList.remove('active');
-    });
-    document.querySelector(`.token-type-option[data-type="${type}"]`).classList.add('active');
-    
-    // Update hidden field
-    document.getElementById('tokenType').value = type;
-    
-    // Show/hide fields
-    document.querySelectorAll('.token-fields').forEach(el => {
-        el.style.display = 'none';
-    });
-    document.getElementById(`${type}Fields`).style.display = 'block';
-}
-
-// Form validation
-function validateCampaignForm() {
-    // Validate required fields
-    const requiredFields = [
-        'title', 'description', 'goalAmount', 
-        'tokenSymbol', 'totalTokens', 'tokenType'
-    ];
-    
-    for (const field of requiredFields) {
-        const element = document.getElementById(field);
-        if (!element || !element.value.trim()) {
-            alert(`Please fill in the ${field.replace(/([A-Z])/g, ' $1').toLowerCase()} field`);
-            if (element) element.focus();
-            return false;
-        }
-    }
-    
-    // Validate token type specific fields
-    const tokenType = document.getElementById('tokenType').value;
-    
-    if (tokenType === 'profit') {
-        if (!document.getElementById('profitSharePercentage').value) {
-            alert('Please enter profit share percentage');
-            return false;
-        }
-    } 
-    else if (tokenType === 'ownership') {
-        if (!document.getElementById('ownershipPercentage').value) {
-            alert('Please enter ownership percentage');
-            return false;
-        }
-    }
-    else if (tokenType === 'hybrid') {
-        if (!document.getElementById('ownershipPerToken').value || 
-            !document.getElementById('hybridRewardDescription').value) {
-            alert('Please complete all hybrid token fields');
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-// Debug form submission
-document.getElementById('createCampaignForm')?.addEventListener('submit', function(e) {
-    console.log('Form submitted with data:', {
-        title: this.title.value,
-        description: this.description.value,
-        goalAmount: this.goalAmount.value,
-        tokenType: this.tokenType.value,
-        tokenSymbol: this.tokenSymbol.value,
-        totalTokens: this.totalTokens.value,
-        image: this.image?.files[0]?.name || 'none'
-    });
-    
-    if (!validateCampaignForm()) {
-        e.preventDefault();
-        return;
-    }
-    
-    // Show loading state
-    const btn = this.querySelector('button[type="submit"]');
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-    btn.disabled = true;
-});
-</script>
-
-<script>
-// Initialize token type selection
-document.addEventListener('DOMContentLoaded', function() {
-    // Default to profit type
-    selectTokenType('profit');
-});
-
-// Token Type Selection
-function selectTokenType(type) {
-    // Update UI
-    document.querySelectorAll('.token-type-option').forEach(opt => {
-        opt.classList.remove('active');
-    });
-    document.querySelector(`.token-type-option[data-type="${type}"]`).classList.add('active');
-    
-    // Update hidden field
-    document.getElementById('tokenType').value = type;
-    
-    // Show/hide fields
-    document.querySelectorAll('.token-fields').forEach(el => {
-        el.style.display = 'none';
-    });
-    document.getElementById(`${type}Fields`).style.display = 'block';
-}
-
-// Form Validation
-function validateCampaignForm() {
-    // Validate required fields
-    const requiredFields = [
-        'title', 'description', 'goalAmount', 
-        'tokenSymbol', 'totalTokens', 'tokenType'
-    ];
-    
-    for (const field of requiredFields) {
-        const element = document.getElementById(field);
-        if (!element || !element.value.trim()) {
-            alert(`Please fill in the ${field.replace(/([A-Z])/g, ' $1').toLowerCase()} field`);
-            if (element) element.focus();
-            return false;
-        }
-    }
-    
-    // Validate token type specific fields
-    const tokenType = document.getElementById('tokenType').value;
-    
-    if (tokenType === 'profit') {
-        if (!document.getElementById('profitSharePercentage').value) {
-            alert('Please enter profit share percentage');
-            return false;
-        }
-    } 
-    else if (tokenType === 'ownership') {
-        if (!document.getElementById('ownershipPercentage').value) {
-            alert('Please enter ownership percentage');
-            return false;
-        }
-    }
-    else if (tokenType === 'hybrid') {
-        if (!document.getElementById('ownershipPerToken').value || 
-            !document.getElementById('hybridRewardDescription').value) {
-            alert('Please complete all hybrid token fields');
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-// Form Submission Handler
-document.getElementById('createCampaignForm')?.addEventListener('submit', function(e) {
-    if (!validateCampaignForm()) {
-        e.preventDefault();
-        return;
-    }
-    
-    // Show loading state
-    const btn = document.getElementById('submitButton');
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-    btn.disabled = true;
-    
-    // Allow form to submit normally if validation passes
-});
-</script>
 
 <%- include("partials/footer") -%>

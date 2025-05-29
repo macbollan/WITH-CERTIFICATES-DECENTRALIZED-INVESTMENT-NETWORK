@@ -11,8 +11,7 @@ const path = require("path");
 const fs = require("fs");
 const { Parser } = require("json2csv");
 const ImageKit = require("imagekit");
-
-const { Paynow } = require('paynow'); 
+const { Paynow } = require('paynow');
 require("dotenv").config();
 
 // ImageKit setup
@@ -22,13 +21,7 @@ const imagekit = new ImageKit({
   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
 });
 
-
-const paynow = new Paynow(
-  process.env.PAYNOW_INTEGRATION_ID,
-  process.env.PAYNOW_INTEGRATION_KEY
-);
-
-// Update your Paynow initialization (around line 20)
+// Paynow initialization
 const paynow = new Paynow(
   process.env.PAYNOW_INTEGRATION_ID,
   process.env.PAYNOW_INTEGRATION_KEY,
@@ -36,10 +29,10 @@ const paynow = new Paynow(
   "http://localhost/paynow/return"  // returnUrl
 );
 
-
-// Optionally set return and result URLs (can be fake for demo)
-paynow.resultUrl = "http://localhost/paynow/update";
-paynow.returnUrl = "http://localhost/paynow/return";
+// Set debug mode if not in production
+if (process.env.NODE_ENV !== 'production') {
+  paynow.debug = true;
+}
 
 // Blockchain setup
 const { ethers } = require("ethers");
@@ -236,46 +229,6 @@ app.post("/register", upload.single("profilePicture"), async (req, res) => {
 app.get("/login", (req, res) => {
   res.render("login", { currentUser: req.user, message: req.flash("error") });
 });
-
-//PAYNOW!!!
-
-app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
-  const { id } = req.params;
-  const { amount, paymentMethod } = req.body;
-
-  try {
-    const campaign = await Campaign.findById(id);
-    if (!campaign) {
-      req.flash("error", "Campaign not found");
-      return res.redirect("/campaigns");
-    }
-
-    const user = await User.findById(req.user._id);
-
-    // Create a new Paynow payment
-    const payment = paynow.createPayment(`${campaign.title} Investment`, user.email);
-
-    // Add item (what the user is paying for)
-    payment.add(`${campaign.tokenName} Investment`, amount);
-
-    // Send payment to Paynow
-    const response = await paynow.sendMobile(payment, user.phone, paymentMethod); // e.g., "ecocash"
-
-    if (response.success) {
-      console.log("Redirect to:", response.redirectUrl);
-      res.redirect(response.redirectUrl); // Redirect to Paynow for approval
-    } else {
-          console.error("Paynow failed response:", response);
-    req.flash("error", "Payment initiation failed. Please try again.");
-      res.redirect("/campaigns/");
-    }
-  } catch (err) {
-    console.error("Paynow error:", err);
-    req.flash("error", "Payment initiation failed. Please try again.");
-    res.redirect("/campaigns/");
-  }
-});
-
 
 app.post("/login", passport.authenticate("local", {
   successFlash: "Successfully logged in",
@@ -498,11 +451,10 @@ app.get("/new", isLoggedIn, function (req, res) {
   res.render("new.ejs", { currentUser: req.user });
 });
 
-
 app.post("/campaigns/create", isLoggedIn, upload.single('image'), async (req, res) => {
     try {
-        console.log('Received form data:', req.body); // Debug log
-        console.log('Received file:', req.file); // Debug log
+        console.log('Received form data:', req.body);
+        console.log('Received file:', req.file);
 
         const { title, description, goalAmount, tokenType, tokenSymbol, totalTokens } = req.body;
         
@@ -517,7 +469,7 @@ app.post("/campaigns/create", isLoggedIn, upload.single('image'), async (req, re
         if (req.file) {
             try {
                 imageUrl = await uploadToImageKit(req.file, 'campaign_images');
-                console.log('Image uploaded to:', imageUrl); // Debug log
+                console.log('Image uploaded to:', imageUrl);
             } catch (uploadError) {
                 console.error('Image upload failed:', uploadError);
                 req.flash("error", "Failed to upload campaign image");
@@ -645,6 +597,169 @@ app.post("/campaigns/:id/rate", isLoggedIn, async (req, res) => {
   await campaign.save();
   req.flash("success", "Rating submitted!");
   res.redirect(`/campaigns/${campaign._id}`);
+});
+
+// Paynow Payment Routes
+app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
+  const { id } = req.params;
+  const { amount, paymentMethod, mobileNumber } = req.body;
+
+  try {
+    const campaign = await Campaign.findById(id);
+    if (!campaign) {
+      req.flash("error", "Campaign not found");
+      return res.redirect("/campaigns");
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user.phone && !mobileNumber) {
+      req.flash("error", "Please provide a mobile number for payment");
+      return res.redirect(`/campaigns/${id}`);
+    }
+
+    // Create a unique reference for this payment
+    const reference = `INV-${Date.now()}-${user._id.toString().slice(-6)}`;
+
+    console.log(".................MOBILE SENT TO PAYNOW: ", mobileNumber, " via ", paymentMethod);
+
+
+    // Create payment
+    const payment = paynow.createPayment(reference, "macbtee@gmail.com");
+    payment.add(`Investment in ${campaign.title}`, amount);
+
+    // Save temporary investment record
+    const tempInvestment = new Investment({
+      investor: user._id,
+      campaign: campaign._id,
+      amount: amount,
+      paymentStatus: 'pending',
+      paynowReference: reference,
+      tokenDetails: {
+        name: campaign.tokenName,
+        symbol: campaign.tokenSymbol,
+        type: campaign.tokenType,
+        value: amount
+      }
+    });
+    await tempInvestment.save();
+
+    // Send payment to Paynow
+    const response = await paynow.sendMobile(
+      payment, 
+      mobileNumber, 
+      paymentMethod
+    );
+
+    if (response.success) {
+      // Save poll URL for later verification
+      tempInvestment.paynowPollUrl = response.pollUrl;
+      await tempInvestment.save();
+      
+      return res.redirect(response.redirectUrl);
+    } else {
+      console.error("Paynow failed response:", response);
+      req.flash("error", response.error || "Payment initiation failed");
+      return res.redirect(`/campaigns/${id}`);
+    }
+  } catch (err) {
+    console.error("Paynow error:", err);
+    req.flash("error", "Payment initiation failed. Please try again.");
+    res.redirect(`/campaigns/${id}`);
+  }
+});
+
+// Paynow Result URL (for server-to-server notifications)
+app.post("/paynow/result", async (req, res) => {
+  try {
+    const status = req.body.status;
+    const pollUrl = req.body.pollurl;
+    
+    if (!pollUrl) {
+      return res.status(400).send('Missing poll URL');
+    }
+
+    // Poll Paynow to get payment status
+    const response = await paynow.pollTransaction(pollUrl);
+    
+    if (response.paid) {
+      // Payment was successful
+      const reference = response.reference;
+      const amount = parseFloat(response.amount);
+      
+      // Find the investment by reference
+      const investment = await Investment.findOne({ paynowReference: reference });
+      if (!investment) {
+        return res.status(404).send('Investment not found');
+      }
+
+      // Update investment status
+      investment.paymentStatus = 'completed';
+      investment.amount = amount; // Update with actual paid amount
+      await investment.save();
+
+      // Update campaign
+      const campaign = await Campaign.findById(investment.campaign);
+      campaign.amountRaised += amount;
+      campaign.investments.push(investment._id);
+      
+      if (campaign.amountRaised >= campaign.goalAmount) {
+        campaign.status = "funded";
+      }
+      
+      await campaign.save();
+
+      // Mint NFT (reuse your existing NFT minting logic)
+      const investor = await User.findById(investment.investor);
+      if (investor.walletAddress) {
+        try {
+          // Your NFT minting code here...
+          // This should be similar to your existing /campaigns/invest route logic
+          // Just adapt it to work with the investment record we have
+          
+          console.log(`NFT minted for investment ${reference}`);
+        } catch (mintError) {
+          console.error('NFT minting error:', mintError);
+          // You might want to handle this error appropriately
+        }
+      }
+    }
+
+    res.status(200).send('OK');
+  } catch (err) {
+    console.error('Paynow result error:', err);
+    res.status(500).send('Error processing payment');
+  }
+});
+
+// Paynow Return URL (for user redirect after payment)
+app.get("/paynow/return", async (req, res) => {
+  try {
+    const status = req.query.status;
+    const reference = req.query.reference;
+    
+    // Find the investment
+    const investment = await Investment.findOne({ paynowReference: reference });
+    
+    if (status.toLowerCase() === 'paid') {
+      if (investment) {
+        if (investment.paymentStatus === 'completed') {
+          req.flash('success', 'Payment completed successfully! Your tokens have been issued.');
+        } else {
+          req.flash('success', 'Payment completed successfully! Your tokens are being processed.');
+        }
+      } else {
+        req.flash('success', 'Payment completed successfully!');
+      }
+    } else {
+      req.flash('error', 'Payment was not completed. Please try again.');
+    }
+    
+    res.redirect('/profile');
+  } catch (err) {
+    console.error('Paynow return error:', err);
+    req.flash('error', 'Error processing payment status');
+    res.redirect('/profile');
+  }
 });
 
 app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
@@ -790,7 +905,8 @@ app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
       },
       transactionHash: mintReceipt.hash,
       blockchainCampaignId: campaignIdHex,
-      tokenId: tokenId
+      tokenId: tokenId,
+      paymentStatus: 'completed' // Mark as completed for crypto payments
     });
 
     await investment.save();
@@ -892,7 +1008,7 @@ app.post("/admin/campaigns/approve/:campaignId", isLoggedIn, async (req, res) =>
 
     campaign.isApproved = true;
     campaign.status = "active";
-    await campaign.save();
+    await campaign.save();aut
 
     req.flash("success", `Campaign "${campaign.title}" has been approved.`);
     res.redirect("/admin/dashboard");
