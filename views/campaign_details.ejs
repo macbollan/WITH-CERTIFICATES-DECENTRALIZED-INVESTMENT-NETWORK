@@ -1376,6 +1376,23 @@
         </div>
     </div>
 
+<!-- Spinner Modal -->
+<div class="modal fade" id="spinnerModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-light text-center p-5">
+      <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+      <h5 class="mb-3">Processing your investment...</h5>
+      <div class="progress mt-3" style="height: 6px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+      </div>
+      <p class="text-muted mt-2 small" id="statusMessage">
+        Confirming payment and minting your NFT certificate
+      </p>
+    </div>
+  </div>
+</div>
+
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
     <script>
@@ -1524,6 +1541,68 @@
                 });
             });
         });
-    </script>
+
+
+        
+
+  function showSpinner() {
+    const spinnerModal = new bootstrap.Modal(document.getElementById('spinnerModal'));
+    spinnerModal.show();
+  }
+
+  
+async function checkAndMintInvestment() {
+  try {
+    console.log("⏳ Sending POST to /payment/status...");
+    const spinnerModal = new bootstrap.Modal(document.getElementById('spinnerModal'));
+    spinnerModal.show();
+
+    const res = await fetch('/payment/status', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      credentials: 'include' // Ensure cookies/session are sent
+    });
+
+    const data = await res.json();
+    console.log("✅ Response from /payment/status:", data);
+
+    if (!res.ok) {
+      throw new Error(data.message || "Payment status check failed");
+    }
+
+    if (data.success) {
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+      } else {
+        // Refresh the page to show updated campaign state
+        window.location.reload();
+      }
+    } else {
+      throw new Error(data.message || "Investment processing failed");
+    }
+  } catch (err) {
+    console.error("❌ Error checking payment status:", err);
+    const spinnerModal = bootstrap.Modal.getInstance(document.getElementById('spinnerModal'));
+    spinnerModal.hide();
+    
+    alert(`Error: ${err.message}`);
+    window.location.href = "/campaigns";
+  }
+}
+  
+
+  // Auto-run if payment=success is in URL
+  window.addEventListener("DOMContentLoaded", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+      showSpinner();
+      checkAndMintInvestment();
+    }
+  });
+</script>
+
 </body>
 </html>

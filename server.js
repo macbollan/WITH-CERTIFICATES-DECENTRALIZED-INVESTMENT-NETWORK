@@ -13,6 +13,8 @@ const { Parser } = require("json2csv");
 const ImageKit = require("imagekit");
 const { Paynow } = require('paynow');
 require("dotenv").config();
+const MongoStore = require("connect-mongo");
+const axios = require("axios");
 
 // ImageKit setup
 const imagekit = new ImageKit({
@@ -21,13 +23,13 @@ const imagekit = new ImageKit({
   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
 });
 
-// Paynow initialization
 const paynow = new Paynow(
   process.env.PAYNOW_INTEGRATION_ID,
   process.env.PAYNOW_INTEGRATION_KEY,
-  "http://localhost/paynow/result", // resultUrl
-  "http://localhost/paynow/return"  // returnUrl
+  "http://localhost/paynow/result", // for server-to-server
+  "http://localhost/payment/status" // for user redirect
 );
+
 
 // Set debug mode if not in production
 if (process.env.NODE_ENV !== 'production') {
@@ -37,6 +39,10 @@ if (process.env.NODE_ENV !== 'production') {
 // Blockchain setup
 const { ethers } = require("ethers");
 const pinataSDK = require('@pinata/sdk');
+
+console.log("✅ PINATA_API_KEY:", process.env.PINATA_API_KEY);
+console.log("✅ PINATA_API_SECRET:", process.env.PINATA_API_SECRET);
+
 
 if (!process.env.PINATA_API_KEY || !process.env.PINATA_API_SECRET) {
   throw new Error('Missing Pinata credentials in environment variables');
@@ -113,6 +119,23 @@ app.use(function (req, res, next) {
   res.locals.currentUser = req.user;
   res.locals.success = req.flash("success");
   res.locals.error = req.flash("error");
+  next();
+});
+
+// After session configuration
+app.use((req, res, next) => {
+  // Save session before redirects/response
+  const originalRedirect = res.redirect;
+  res.redirect = function(url) {
+    return req.session.save(() => originalRedirect.call(this, url));
+  };
+  
+  // Save session for JSON responses
+  const originalJson = res.json;
+  res.json = function(obj) {
+    return req.session.save(() => originalJson.call(this, obj));
+  };
+  
   next();
 });
 
@@ -605,6 +628,8 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
   const { amount, paymentMethod, mobileNumber } = req.body;
 
   try {
+    console.log("➡️ Initiating Paynow payment for campaign:", id);
+
     const campaign = await Campaign.findById(id);
     if (!campaign) {
       req.flash("error", "Campaign not found");
@@ -612,26 +637,28 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
     }
 
     const user = await User.findById(req.user._id);
-    if (!user.phone && !mobileNumber) {
+    const mobile = Array.isArray(mobileNumber) ? mobileNumber[0] : mobileNumber;
+
+    if (!user.phone && !mobile) {
       req.flash("error", "Please provide a mobile number for payment");
       return res.redirect(`/campaigns/${id}`);
     }
 
-    // Create a unique reference for this payment
+    // Create a unique reference
     const reference = `INV-${Date.now()}-${user._id.toString().slice(-6)}`;
+    console.log("🧾 Payment reference:", reference);
+    console.log("📞 Mobile used:", mobile);
+    console.log("📱 Method:", paymentMethod);
 
-    console.log(".................MOBILE SENT TO PAYNOW: ", mobileNumber, " via ", paymentMethod);
-
-
-    // Create payment
+    // Create Paynow payment object
     const payment = paynow.createPayment(reference, "macbtee@gmail.com");
     payment.add(`Investment in ${campaign.title}`, amount);
 
-    // Save temporary investment record
+    // Save temporary investment
     const tempInvestment = new Investment({
       investor: user._id,
       campaign: campaign._id,
-      amount: amount,
+      amount: parseFloat(amount),
       paymentStatus: 'pending',
       paynowReference: reference,
       tokenDetails: {
@@ -641,32 +668,248 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
         value: amount
       }
     });
-    await tempInvestment.save();
 
-    // Send payment to Paynow
-    const response = await paynow.sendMobile(
-      payment, 
-      mobileNumber, 
-      paymentMethod
-    );
+    // Send to Paynow
+    const response = await paynow.sendMobile(payment, mobile, paymentMethod);
+    console.log("📡 Paynow API response:", response);
 
     if (response.success) {
-      // Save poll URL for later verification
+      // Save poll URL
       tempInvestment.paynowPollUrl = response.pollUrl;
+
+      // Save investment session
+      req.session.pendingInvestment = {
+        userId: user._id,
+        campaignId: campaign._id,
+        amount: parseFloat(amount),
+        walletAddress: user.walletAddress || "0x0000000000000000000000000000000000000000",
+        metadata: {
+          symbol: campaign.tokenSymbol,
+          name: campaign.tokenName,
+          type: campaign.tokenType,
+          title: campaign.title,
+          value: parseFloat(amount)
+        }
+      };
+
       await tempInvestment.save();
-      
-      return res.redirect(response.redirectUrl);
+
+      console.log("✅ Poll URL saved:", response.pollUrl);
+      console.log("🔗 Redirecting to Paynow:", response.redirectUrl);
+
+      res.redirect(`/campaigns/${campaign._id}?payment=success`);
+
+      //return res.redirect(response.redirectUrl);
+
     } else {
-      console.error("Paynow failed response:", response);
+      console.error("❌ Paynow failed or returned no redirect URL.");
       req.flash("error", response.error || "Payment initiation failed");
       return res.redirect(`/campaigns/${id}`);
     }
   } catch (err) {
-    console.error("Paynow error:", err);
+    console.error("🔥 Paynow initiation error:", err.message || err);
     req.flash("error", "Payment initiation failed. Please try again.");
-    res.redirect(`/campaigns/${id}`);
+    return res.redirect(`/campaigns/${id}`);
   }
 });
+
+
+app.post("/payment/status", isLoggedIn, async (req, res) => {
+  console.log("📩 Entered /payment/status");
+
+  const investmentData = req.session.pendingInvestment;
+  if (!investmentData) {
+    console.error("❌ No pending investment in session");
+    return res.status(400).json({
+      success: false,
+      message: "No pending investment found. Please try again.",
+    });
+  }
+
+  try {
+    console.log(investmentData)
+    const { campaignId, userId, amount, metadata, walletAddress } = investmentData;
+
+    // Check if already processed
+    const existing = await Investment.findOne({
+      investor: userId,
+      campaign: campaignId,
+      amount: amount,
+      paymentStatus: "completed",
+    });
+
+    if (existing) {
+      console.log("ℹ️ Investment already processed.");
+      delete req.session.pendingInvestment;
+      return res.json({
+        success: true,
+        message: "Investment already recorded.",
+        redirectUrl: `/campaigns/${campaignId}`,
+      });
+    }
+
+    // Fetch campaign and investor
+    const [campaign, investor] = await Promise.all([
+      Campaign.findById(campaignId),
+      User.findById(userId),
+    ]);
+
+    if (!campaign || !investor || !walletAddress) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid investor or campaign data.",
+      });
+    }
+
+    // Prevent overfunding
+    if (campaign.amountRaised + parseFloat(amount) > campaign.goalAmount) {
+      return res.status(400).json({
+        success: false,
+        message: "Funding goal exceeded.",
+      });
+    }
+
+    // 🔗 Upload campaign image to IPFS
+    let ipfsImageURL;
+    try {
+      const axios = require("axios");
+      const FormData = require("form-data");
+      const { PINATA_API_KEY, PINATA_API_SECRET } = process.env;
+
+      const imgStream = await axios.get(campaign.image, { responseType: "stream" });
+      const form = new FormData();
+      form.append("file", imgStream.data, "campaign.jpg");
+
+      const pinImageRes = await axios.post(
+        "https://api.pinata.cloud/pinning/pinFileToIPFS",
+        form,
+        {
+          maxBodyLength: "Infinity",
+          headers: {
+            ...form.getHeaders(),
+            pinata_api_key: PINATA_API_KEY,
+            pinata_secret_api_key: PINATA_API_SECRET,
+          },
+        }
+      );
+
+      ipfsImageURL = `ipfs://${pinImageRes.data.IpfsHash}`;
+      console.log("✅ IPFS image uploaded:", ipfsImageURL);
+    } catch (err) {
+      console.error("⚠️ Failed to upload image to IPFS:", err.message);
+      ipfsImageURL = campaign.image; // fallback
+    }
+
+    // 🔗 Pin JSON metadata
+    const jsonMeta = {
+      name: `${metadata.name} Investment Certificate`,
+      description: `Proof of $${amount} investment in ${metadata.title}`,
+      image: ipfsImageURL,
+      attributes: [
+        { trait_type: "Amount", value: amount.toString() },
+        { trait_type: "Token", value: metadata.symbol },
+        { trait_type: "Type", value: metadata.type },
+        { trait_type: "Date", value: new Date().toISOString() },
+      ],
+    };
+
+    const pinJSONRes = await axios.post(
+      "https://api.pinata.cloud/pinning/pinJSONToIPFS",
+      jsonMeta,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          pinata_api_key: process.env.PINATA_API_KEY,
+          pinata_secret_api_key: process.env.PINATA_API_SECRET,
+        },
+      }
+    );
+
+    const metadataURI = `ipfs://${pinJSONRes.data.IpfsHash}`;
+    console.log("✅ Metadata pinned:", metadataURI);
+
+    // 🧾 Mint NFT
+    const { ethers } = require("ethers");
+    const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_SEPOLIA_URL);
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    const abi = require("./abis/InvestmentToken721.json").abi;
+    const contract = new ethers.Contract(process.env.ERC721_CONTRACT_ADDRESS, abi, wallet);
+
+    const gasPrice = BigInt(await provider.send("eth_gasPrice", []));
+    const gasEstimate = await contract.mintInvestmentNFT.estimateGas(
+      walletAddress,
+      metadata.symbol,
+      metadata.name,
+      metadataURI,
+      amount
+    );
+
+    const tx = await contract.mintInvestmentNFT(
+      walletAddress,
+      metadata.symbol,
+      metadata.name,
+      metadataURI,
+      amount,
+      { gasLimit: gasEstimate + 50000n, gasPrice }
+    );
+
+    const receipt = await tx.wait();
+    const parsed = receipt.logs
+      .map((log) => {
+        try {
+          return contract.interface.parseLog(log);
+        } catch {
+          return null;
+        }
+      })
+      .find((e) => e?.name === "InvestmentNFTMinted");
+
+    const tokenId = parsed?.args?.tokenId?.toString();
+    if (!tokenId) throw new Error("Token ID not found in receipt.");
+
+    // 💾 Save investment
+
+    const investment = new Investment({
+      investor: investor._id,
+      campaign: campaign._id,
+      amount,
+      tokens: 1,
+      tokenDetails: metadata,
+      transactionHash: receipt.hash,
+      blockchainCampaignId: "0x" + campaign._id.toString().slice(0, 16),
+      tokenId,
+      paymentStatus: "completed",
+    });
+
+    await investment.save();
+
+    // 🛠️ Update campaign
+    campaign.amountRaised += parseFloat(amount);
+    campaign.investments.push(investment._id);
+    if (campaign.amountRaised >= campaign.goalAmount) campaign.status = "funded";
+    await campaign.save();
+
+    // ✅ Done
+    delete req.session.pendingInvestment;
+    console.log("✅ Investment finalized and NFT minted.");
+
+    return res.json({
+      success: true,
+      message: "NFT minted and investment recorded",
+      redirectUrl: `/campaigns/${campaign._id}`,
+    });
+
+  } catch (err) {
+    console.error("❌ Payment status error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: "Investment finalization failed. " + err.message,
+    });
+  }
+});
+
+
+
 
 // Paynow Result URL (for server-to-server notifications)
 app.post("/paynow/result", async (req, res) => {
@@ -731,36 +974,6 @@ app.post("/paynow/result", async (req, res) => {
   }
 });
 
-// Paynow Return URL (for user redirect after payment)
-app.get("/paynow/return", async (req, res) => {
-  try {
-    const status = req.query.status;
-    const reference = req.query.reference;
-    
-    // Find the investment
-    const investment = await Investment.findOne({ paynowReference: reference });
-    
-    if (status.toLowerCase() === 'paid') {
-      if (investment) {
-        if (investment.paymentStatus === 'completed') {
-          req.flash('success', 'Payment completed successfully! Your tokens have been issued.');
-        } else {
-          req.flash('success', 'Payment completed successfully! Your tokens are being processed.');
-        }
-      } else {
-        req.flash('success', 'Payment completed successfully!');
-      }
-    } else {
-      req.flash('error', 'Payment was not completed. Please try again.');
-    }
-    
-    res.redirect('/profile');
-  } catch (err) {
-    console.error('Paynow return error:', err);
-    req.flash('error', 'Error processing payment status');
-    res.redirect('/profile');
-  }
-});
 
 app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
   const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_SEPOLIA_URL);
@@ -1163,16 +1376,9 @@ function isLoggedIn(req, res, next) {
 app.use((err, req, res, next) => {
   if (err.name === 'CastError' && err.kind === 'ObjectId') {
     console.warn("Caught CastError:", err.message);
-    return res.status(400).render("error", { 
-      title: "Invalid ID Format", 
-      message: "The ID provided is invalid. Please check your URL or link."
-    });
+
   }
   console.error("🔥 Unhandled Error:", err);
-  res.status(500).render("error", {
-    title: "Server Error",
-    message: "An unexpected error occurred. Please try again later."
-  });
 });
 
 // Start Server

@@ -829,25 +829,6 @@
                                 </div>
                             </div>
                             
-                            <div class="payment-method-card" onclick="selectPaymentMethod('visa')">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-credit-card payment-method-icon text-info"></i>
-                                    <div>
-                                        <h6 class="mb-1">Visa/Mastercard</h6>
-                                        <small class="text-muted">Pay with your card</small>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="payment-method-card" onclick="selectPaymentMethod('crypto')">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-currency-bitcoin payment-method-icon text-warning"></i>
-                                    <div>
-                                        <h6 class="mb-1">Crypto (ETH)</h6>
-                                        <small class="text-muted">Pay with cryptocurrency</small>
-                                    </div>
-                                </div>
-                            </div>
                             
                             <input type="hidden" id="paymentMethod" name="paymentMethod" required>
                             <input type="hidden" id="mobileNumber" name="mobileNumber">
@@ -880,6 +861,31 @@
             </div>
         </div>
     </div>
+
+    <!-- Auto Status Spinner Modal -->
+<div class="modal fade" id="processingPaymentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content text-center py-4">
+      <div class="modal-body">
+        <div class="spinner-border text-primary mb-3" role="status"></div>
+        <h5 class="mb-3">Finalizing Investment...</h5>
+        <p class="small text-muted">Please wait while we verify and mint your token</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Spinner Modal -->
+<div class="modal fade" id="spinnerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-light text-center p-5">
+      <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+      <h5>Please wait while we confirm your investment...</h5>
+    </div>
+  </div>
+</div>
+
+
 
     <!-- JavaScript Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -1147,6 +1153,14 @@
                     
                     const successModal = new bootstrap.Modal(document.getElementById('paymentSuccessModal'));
                     successModal.show();
+
+                    // Automatically start status check after a short delay
+setTimeout(() => {
+  successModal.hide();
+  checkAndMintInvestment(); // 🔁 Mint & Save
+}, 3000);
+
+
                 }, 1500);
             }
         });
@@ -1178,6 +1192,46 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
             btn.disabled = true;
         });
-    </script>
+
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('payment') === 'success') {
+    // ✅ Show loader/modal
+    showSpinner();
+
+    // 🔁 Call backend to finalize
+    checkAndMintInvestment();
+  }
+
+  function showSpinner() {
+    const spinnerModal = new bootstrap.Modal(document.getElementById('spinnerModal'));
+    spinnerModal.show();
+  }
+
+async function checkAndMintInvestment() {
+  try {
+    const res = await fetch('/payment/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await res.json();  // CRITICAL LINE
+    console.log("✅ Response from /payment/status:", data);
+
+    if (data.success && data.redirectUrl) {
+      window.location.href = data.redirectUrl;
+    } else {
+      alert(data.message || 'Investment finalization failed.');
+    }
+  } catch (err) {
+    console.error("❌ JSON parse or network error:", err);
+    alert("Something went wrong finalizing your investment.");
+  }
+}
+
+</script>
+
+
+    
 
 <%- include("partials/footer") -%>

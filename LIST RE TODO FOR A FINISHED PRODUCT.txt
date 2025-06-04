@@ -54,4 +54,6 @@ Cache token data in the DB to prevent multiple blockchain reads on profile load.
 --- updload images to cloudinary for diployment
 --- ecocash payment gateway
 ---- ratings in front
+THE LAUNCH CAMPAIGN MODAL IS NOT WORKING
+
 

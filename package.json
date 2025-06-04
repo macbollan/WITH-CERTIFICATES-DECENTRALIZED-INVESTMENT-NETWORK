@@ -18,6 +18,7 @@
     "buffer": "^6.0.3",
     "cloudinary": "^2.5.1",
     "connect-flash": "^0.1.1",
+    "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.4.7",
