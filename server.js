@@ -26,8 +26,8 @@ const imagekit = new ImageKit({
 const paynow = new Paynow(
   process.env.PAYNOW_INTEGRATION_ID,
   process.env.PAYNOW_INTEGRATION_KEY,
-  "http://localhost/paynow/result", // for server-to-server
-  "http://localhost/payment/status" // for user redirect
+  "https://4ae0-2605-59c0-5fae-5510-3007-5dd-14c2-1807.ngrok-free.app/paynow/result", // for server-to-server
+  "https://4ae0-2605-59c0-5fae-5510-3007-5dd-14c2-1807.ngrok-free.app/payment/status" // for user redirect
 );
 
 
@@ -84,6 +84,8 @@ const app = express();
 const User = require("./models/User.model");
 const Campaign = require("./models/Campaign.model");
 const Investment = require("./models/Investment.model");
+const WithdrawalRequest = require("./models/WithdrawalRequest");
+
 
 // MongoDB Connection
 mongoose.connect("mongodb://localhost/Investment_Network4", {
@@ -596,7 +598,7 @@ app.post("/campaigns/:id/rate", isLoggedIn, async (req, res) => {
 
   if (!campaign) {
     req.flash("error", "Campaign not found.");
-    return res.redirect("/campaigns");
+  res.redirect(`/campaigns/${campaign._id}`);
   }
 
   if (!Array.isArray(campaign.ratings)) {
@@ -633,7 +635,7 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
     const campaign = await Campaign.findById(id);
     if (!campaign) {
       req.flash("error", "Campaign not found");
-      return res.redirect("/campaigns");
+      return res.redirect(`/campaigns/${id}`);
     }
 
     const user = await User.findById(req.user._id);
@@ -642,6 +644,17 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
     if (!user.phone && !mobile) {
       req.flash("error", "Please provide a mobile number for payment");
       return res.redirect(`/campaigns/${id}`);
+    }
+
+    if (!campaign || !user || !user.walletAddress) {
+      req.flash("error", "Invalid campaign or user data.");
+      return res.redirect(`/campaigns/${id}`);
+    }
+    
+    // Prevent overfunding
+    if (campaign.amountRaised + parseFloat(amount) > campaign.goalAmount) {
+        req.flash("error", "Funding goal exceeded.");
+        return res.redirect(`/campaigns/${id}`);
     }
 
     // Create a unique reference
@@ -683,6 +696,7 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
         campaignId: campaign._id,
         amount: parseFloat(amount),
         walletAddress: user.walletAddress || "0x0000000000000000000000000000000000000000",
+        pollUrl: response.pollUrl, // store it here
         metadata: {
           symbol: campaign.tokenSymbol,
           name: campaign.tokenName,
@@ -692,7 +706,7 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
         }
       };
 
-      await tempInvestment.save();
+      //await tempInvestment.save();
 
       console.log("✅ Poll URL saved:", response.pollUrl);
       console.log("🔗 Redirecting to Paynow:", response.redirectUrl);
@@ -715,7 +729,9 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
 
 
 app.post("/payment/status", isLoggedIn, async (req, res) => {
-  console.log("📩 Entered /payment/status");
+  //console.log("📩 Entered /payment/status");
+
+
 
   const investmentData = req.session.pendingInvestment;
   if (!investmentData) {
@@ -725,6 +741,28 @@ app.post("/payment/status", isLoggedIn, async (req, res) => {
       message: "No pending investment found. Please try again.",
     });
   }
+
+//    const paynowStatus = await paynow.pollTransaction(investmentData.pollUrl);
+
+
+
+//     console.log("📩 Entered /payment/status ....................................................................................");
+// console.log("📡 Paynow Status:", {
+//   paid: paynowStatus.paid,
+//   status: paynowStatus.status,
+//   amount: paynowStatus.amount,
+//   reference: paynowStatus.reference,
+// });
+
+// if (!paynowStatus.paid) {
+//   console.warn("⚠️ Paynow payment not completed or was cancelled.");
+//   return res.status(400).json({
+//     success: false,
+//     message: "Payment not confirmed. Please complete the payment before proceeding."
+//   });
+// }
+
+
 
   try {
     console.log(investmentData)
@@ -909,6 +947,12 @@ app.post("/payment/status", isLoggedIn, async (req, res) => {
 });
 
 
+app.post('/payment/cancel', isLoggedIn, (req, res) => {
+  delete req.session.pendingInvestment;
+  res.sendStatus(200);
+});
+
+
 
 
 // Paynow Result URL (for server-to-server notifications)
@@ -975,7 +1019,7 @@ app.post("/paynow/result", async (req, res) => {
 });
 
 
-app.post("/campaigns/invest", isLoggedIn, async (req, res) => {
+app.post("/no access", isLoggedIn, async (req, res) => {
   const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_SEPOLIA_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
@@ -1162,14 +1206,17 @@ app.get('/admin/dashboard', isLoggedIn, async (req, res) => {
   const pendingCampaigns = await Campaign.find({ isApproved: false, isRejected: false }).populate('owner');
   const allUsers = await User.find();
   const allCampaigns = await Campaign.find().populate('owner');
+  const pendingWithdrawals = await WithdrawalRequest.find({ status: 'pending' }).populate('campaign owner');
 
   res.render('admin_dashboard', {
     pendingUsers,
     pendingCampaigns,
     allUsers,
-    allCampaigns
+    allCampaigns,
+    pendingWithdrawals // ✅ add this line
   });
 });
+
 
 app.post("/admin/kyc/approve/:userId", isLoggedIn, async (req, res) => {
   try {
@@ -1353,6 +1400,56 @@ app.get('/admin/users/export', isLoggedIn, async (req, res) => {
     res.status(500).send('Failed to export users.');
   }
 });
+
+
+app.post("/admin/withdrawals/request", isLoggedIn, async (req, res) => {
+  try {
+    const { campaignId } = req.body;
+    const campaign = await Campaign.findById(campaignId).populate('owner');
+
+    if (!campaign) {
+      req.flash("error", "Campaign not found.");
+      return res.redirect("/campaigns");
+    }
+
+    // Must be the owner
+    if (!campaign.owner._id.equals(req.user._id)) {
+      req.flash("error", "Unauthorized request.");
+      return res.redirect("/campaigns");
+    }
+
+    if (campaign.status !== "funded") {
+      req.flash("error", "Campaign is not yet fully funded.");
+      return res.redirect(`/campaigns/${campaign._id}`);
+    }
+
+    // Check if already requested
+    const existing = await WithdrawalRequest.findOne({ campaign: campaign._id, status: "pending" });
+    if (existing) {
+      req.flash("info", "Withdrawal already requested and pending approval.");
+      return res.redirect(`/campaigns/${campaign._id}`);
+    }
+
+    // Save request
+    const withdrawal = new WithdrawalRequest({
+      campaign: campaign._id,
+      owner: req.user._id,
+      amountRequested: campaign.amountRaised,
+      status: "pending",
+      requestedAt: new Date()
+    });
+
+    await withdrawal.save();
+
+    req.flash("success", "Withdrawal request submitted to admin.");
+    res.redirect(`/campaigns/${campaign._id}`);
+  } catch (err) {
+    console.error("❌ Withdrawal request error:", err);
+    req.flash("error", "Failed to submit withdrawal request.");
+    res.redirect("/campaigns");
+  }
+});
+
 
 // Utility functions
 function generateTokenName(campaignTitle) {

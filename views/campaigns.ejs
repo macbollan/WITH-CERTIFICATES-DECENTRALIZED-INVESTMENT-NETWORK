@@ -190,6 +190,45 @@
         padding: 2rem;
     }
 
+    /* Token Type Selector */
+    .token-type-selector {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-top: 10px;
+    }
+
+    .token-type-option {
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 1px solid #e0e0e0;
+        background-color: #f8f9fa;
+    }
+
+    .token-type-option:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .token-type-option.active {
+        border-color: #6a11cb;
+        background-color: rgba(106, 17, 203, 0.05);
+        box-shadow: 0 0 0 2px rgba(106, 17, 203, 0.2);
+    }
+
+    .token-type-option i {
+        font-size: 2rem;
+        color: #6a11cb;
+        margin-bottom: 10px;
+    }
+
+    .token-fields {
+        display: none;
+    }
+
     /* Payment Method Cards */
     .payment-method-card {
         border: 1px solid #e0e0e0;
@@ -223,6 +262,10 @@
         
         .parallax-image-container {
             height: 150px;
+        }
+
+        .token-type-selector {
+            grid-template-columns: 1fr;
         }
 
         .modal-body-enhancement {
@@ -440,6 +483,17 @@
                                                 onclick="confirmDelete('<%= campaign._id %>')">
                                             <i class="bi bi-trash"></i> Delete
                                         </button>
+
+                                    <% if (campaign.status === "funded") { %>
+                                    <form action="/admin/withdrawals/request" method="POST">
+                                        <input type="hidden" name="campaignId" value="<%= campaign._id %>">
+                                        <button type="submit" class="btn btn-outline-success glow-on-hover">
+                                        <i class="bi bi-cash-coin"></i> Request Withdrawal
+                                        </button>
+                                    </form>
+                                    <% } %>
+
+
                                     </div>
                                 <% } else if(currentUser) { %>
 
@@ -598,7 +652,7 @@
                                         <div class="col-md-6">
                                             <label for="hybridRewardDescription" class="form-label">Reward Description *</label>
                                             <input type="text" class="form-control form-control-enhanced" id="hybridRewardDescription" 
-                                                name="hybridRewardDescription" required>
+                                                name="hybridRewardDescription">
                                         </div>
                                     </div>
                                 </div>
@@ -678,12 +732,12 @@
                                         <div class="col-md-6">
                                             <label for="editProfitSharePercentage" class="form-label">Profit Share % *</label>
                                             <input type="number" class="form-control form-control-enhanced" id="editProfitSharePercentage" 
-                                                name="profitSharePercentage" min="1" max="100" required>
+                                                name="profitSharePercentage" min="1" max="100" >
                                         </div>
                                         <div class="col-md-6">
                                             <label for="editProfitDistributionFrequency" class="form-label">Distribution *</label>
                                             <select class="form-select form-control-enhanced" id="editProfitDistributionFrequency" 
-                                                name="profitDistributionFrequency" required>
+                                                name="profitDistributionFrequency" >
                                                 <option value="monthly">Monthly</option>
                                                 <option value="quarterly">Quarterly</option>
                                                 <option value="annually">Annually</option>
@@ -697,7 +751,7 @@
                                         <div class="col-md-6">
                                             <label for="editOwnershipPercentage" class="form-label">Ownership % *</label>
                                             <input type="number" class="form-control form-control-enhanced" id="editOwnershipPercentage" 
-                                                name="ownershipPercentage" min="1" max="100" required>
+                                                name="ownershipPercentage" min="1" max="100" >
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-check mt-4 pt-2">
@@ -713,12 +767,12 @@
                                         <div class="col-md-6">
                                             <label for="editOwnershipPerToken" class="form-label">Ownership Per Token *</label>
                                             <input type="number" step="0.01" class="form-control form-control-enhanced" id="editOwnershipPerToken" 
-                                                name="ownershipPerToken" min="0.01" required>
+                                                name="ownershipPerToken" min="0.01">
                                         </div>
                                         <div class="col-md-6">
                                             <label for="editHybridRewardDescription" class="form-label">Reward Description *</label>
                                             <input type="text" class="form-control form-control-enhanced" id="editHybridRewardDescription" 
-                                                name="hybridRewardDescription" required>
+                                                name="hybridRewardDescription" >
                                         </div>
                                     </div>
                                 </div>
@@ -836,7 +890,7 @@
                         
                         <div class="d-grid">
                             <button type="submit" class="btn btn-success btn-lg">
-                                <i class="bi bi-currency-dollar"></i> Confirm Investment
+                                <i class="bi bi-currency-dollar" onclick="submitInvestmentForm()"></i> Confirm Investment
                             </button>
                         </div>
                     </form>
@@ -876,15 +930,16 @@
 </div>
 
 <!-- Spinner Modal -->
-<div class="modal fade" id="spinnerModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="processingModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content bg-light text-center p-5">
       <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
-      <h5>Please wait while we confirm your investment...</h5>
+      <h5>Please wait while we initiate your investment...</h5>
+      <p class="small text-muted">Do not refresh or close this tab.</p>
+      <button class="btn btn-sm btn-outline-danger mt-3" onclick="cancelPendingInvestment()">Cancel</button>
     </div>
   </div>
 </div>
-
 
 
     <!-- JavaScript Libraries -->
@@ -957,6 +1012,21 @@
             
             // Show selected token type fields
             document.getElementById(`${type}Fields`).style.display = 'block';
+        }
+
+        // Form Validation
+        function validateCampaignForm() {
+            const tokenType = document.getElementById('tokenType').value;
+            if (!tokenType) {
+                alert('Please select a token type');
+                return false;
+            }
+
+            const btn = document.getElementById('submitButton');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating...';
+            btn.disabled = true;
+            
+            return true;
         }
 
         // Payment Method Selection
@@ -1160,7 +1230,6 @@ setTimeout(() => {
   checkAndMintInvestment(); // 🔁 Mint & Save
 }, 3000);
 
-
                 }, 1500);
             }
         });
@@ -1229,9 +1298,38 @@ async function checkAndMintInvestment() {
   }
 }
 
-</script>
+// Form Validation Fix for Token Type-Specific Fields
+function validateCampaignForm() {
+    const tokenType = document.getElementById('tokenType').value;
+    if (!tokenType) {
+        alert('Please select a token type');
+        return false;
+    }
 
+    // Disable 'required' on hidden fields
+    document.querySelectorAll('.token-fields input, .token-fields select').forEach(field => {
+        if (field.closest('.token-fields').style.display === 'none') {
+            field.removeAttribute('required');
+        }
+    });
 
-    
+    const btn = document.getElementById('submitButton');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating...';
+    btn.disabled = true;
+
+    return true;
+}
+
+function submitInvestmentForm() {
+  const modal = new bootstrap.Modal(document.getElementById('processingModal'));
+  modal.show();
+
+  document.getElementById('investmentForm').submit();
+}
+
+function cancelPendingInvestment() {
+  window.location.href = '/campaigns'; // or custom cancel route
+}
+    </script>
 
 <%- include("partials/footer") -%>

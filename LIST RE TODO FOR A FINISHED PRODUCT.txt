@@ -12,7 +12,7 @@ All NFTs minted
 
 KYC docs and campaign documents
 
- Ability to ban campaigns or flag suspicious ones.
+ Ability to ban campaigns or flag suspicious ones. (how they view in the front)
 ........................................................................
 
  Ensure recordInvestment in the ledger contract is actually recording correctly.
@@ -44,16 +44,17 @@ Cache token data in the DB to prevent multiple blockchain reads on profile load.
  Replace raw alerts with modals or toast messages
 
  Add loading indicators during blockchain transactions
- implement ecocash stuff
- implement images uploaded to cloudinary....
+
 
  Handle edge cases: no wallet, transaction rejected, etc.
 
 ---make sure the investor are well displayed in the show page
 ---make sure the admin can close campaigns
---- updload images to cloudinary for diployment
+
 --- ecocash payment gateway
 ---- ratings in front
-THE LAUNCH CAMPAIGN MODAL IS NOT WORKING
+THE LAUNCH CAMPAIGN MODAL IS NOT WORKING (creation)
+withdraw button 
+campain aprovals and rejections
 
 
