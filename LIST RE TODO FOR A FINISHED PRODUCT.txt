@@ -53,7 +53,7 @@ Cache token data in the DB to prevent multiple blockchain reads on profile load.
 
 --- ecocash payment gateway
 ---- ratings in front
-THE LAUNCH CAMPAIGN MODAL IS NOT WORKING (creation)
+
 withdraw button 
 campain aprovals and rejections
 

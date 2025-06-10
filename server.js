@@ -26,8 +26,8 @@ const imagekit = new ImageKit({
 const paynow = new Paynow(
   process.env.PAYNOW_INTEGRATION_ID,
   process.env.PAYNOW_INTEGRATION_KEY,
-  "https://4ae0-2605-59c0-5fae-5510-3007-5dd-14c2-1807.ngrok-free.app/paynow/result", // for server-to-server
-  "https://4ae0-2605-59c0-5fae-5510-3007-5dd-14c2-1807.ngrok-free.app/payment/status" // for user redirect
+  "https://760f-196-4-80-2.ngrok-free.app/paynow/result", // for server-to-server
+  "https://760f-196-4-80-2.ngrok-free.app/payment/status" // for user redirect
 );
 
 
@@ -730,7 +730,6 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
 
 app.post("/payment/status", isLoggedIn, async (req, res) => {
   //console.log("📩 Entered /payment/status");
-
 
 
   const investmentData = req.session.pendingInvestment;
