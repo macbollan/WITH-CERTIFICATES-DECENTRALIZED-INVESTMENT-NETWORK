@@ -1,0 +1,212 @@
+**CHAPTER 4: RESULTS AND DISCUSSION**  
+
+This chapter presents the technical implementation, testing, and evaluation of the **Decentralized Investment Campaign Platform**. The platform enables investors to participate in campaigns using fiat (EcoCash/Paynow) and automatically receive ERC-721 NFTs as investment certificates. It also provides campaign creators with tools to manage tokens and track funding progress transparently.  
+
+---
+
+### **4.1 System Overview**  
+
+The system comprises the following modules:  
+- **Admin Panel**: Manages campaigns, users, KYC approvals, and flags suspicious activity.  
+- **Investor Panel**: Enables fiat payments and investment in active campaigns.  
+- **Campaign Creator Dashboard**: Tracks funds raised, edits campaign info, and uploads documents.  
+- **NFT Minting Engine**: Mints ERC-721 tokens upon successful payment confirmation.  
+- **Paynow Integration**: Handles real-world payments using EcoCash in test and live modes.  
+
+**Screenshot to Insert**:  
+- **Figure 4.1**: Home Page of the DApp (Show the landing page with campaign listings and call-to-action buttons).  
+
+---
+
+### **4.2 Hardware and Software Specifications**  
+
+#### **4.2.1 Hardware Requirements**  
+
+**Table 4.1: Computer Specifications**  
+
+| **Hardware**  | **Technical Specification**       | **Purpose**                                  |  
+|---------------|-----------------------------------|---------------------------------------------|  
+| Processor     | Intel Core i3 and above           | Application development and server hosting  |  
+| RAM           | 8GB and above                     | Smooth running of MongoDB and local testing |  
+| Storage       | 128GB SSD or higher               | Project files, logs, local DB dumps         |  
+
+**Table 4.2: Mobile App Hardware Requirements**  
+
+| **Hardware**  | **Technical Specification**       | **Purpose**                                  |  
+|---------------|-----------------------------------|---------------------------------------------|  
+| OS            | Android 7.0+                      | Wallet integration (MetaMask) & testing     |  
+| RAM           | 2GB and above                     | Application usability on low-end phones     |  
+| Storage       | 16GB                              | To store MetaMask and browser cache         |  
+
+#### **4.2.2 Software Requirements**  
+
+**Table 4.3: Mobile Phone Web Browsers**  
+
+| **Browser**  | **Technical Requirement**                     |  
+|--------------|----------------------------------------------|  
+| iOS          | iOS 12.1+ with Safari 12+ or Chrome 89+      |  
+| Android      | Android 7+ with Chrome 89+                   |  
+
+**Table 4.4: Computer Web Browsers**  
+
+| **Browser**  | **Requirement**                              |  
+|--------------|---------------------------------------------|  
+| Chrome       | Version 89+                                 |  
+| Firefox      | Version 78+                                 |  
+| Safari       | Version 12+                                 |  
+| Edge         | Version 44+                                 |  
+
+---
+
+### **4.3 Test Plan and Results**  
+
+#### **4.3.1 Test Strategy**  
+The application was tested using a **layered testing approach**:  
+- **Unit Testing**: Individual components (e.g., `/campaigns/invest`).  
+- **Integration Testing**: Wallet ↔ Paynow ↔ Blockchain ↔ MongoDB.  
+- **System Testing**: All modules combined.  
+- **Manual UI Testing**: Modals, validation errors, and user flows.  
+
+#### **4.3.2 Module Testing Results**  
+
+**Table 4.5: Login Module**  
+
+| **Test Case ID** | **Description**          | **Data**                | **Expected Result**       | **Result** |  
+|------------------|--------------------------|-------------------------|---------------------------|------------|  
+| Login01          | Valid login              | Valid email & password  | Redirect to dashboard      | Pass       |  
+
+**Screenshot to Insert**:  
+- **Figure 4.2**: Login with verified user (Show successful login redirect).  
+
+**Table 4.6: Signup Module**  
+
+| **Test Case ID** | **Description**                  | **Data**      | **Expected Result**            | **Result** |  
+|------------------|----------------------------------|---------------|--------------------------------|------------|  
+| Signup01         | Signup with required fields      | Valid info    | Redirect + verification email  | Pass       |  
+
+**Screenshot to Insert**:  
+- **Figure 4.3**: Signup Modal Form (Show form fields and submission).  
+
+**Table 4.7: KYC Upload Module**  
+
+| **Test Case ID** | **Description**          | **Data**      | **Expected Result**            | **Result** |  
+|------------------|--------------------------|---------------|--------------------------------|------------|  
+| KYC01            | Upload PDF/PNG           | Valid files   | Shows "Pending Approval"       | Pass       |  
+
+**Screenshot to Insert**:  
+- **Figure 4.4**: Upload KYC form in Profile page (Show file upload and status).  
+
+**Table 4.8: Launch Campaign Module**  
+
+| **Test Case ID** | **Description**          | **Data**         | **Expected Result**               | **Result** |  
+|------------------|--------------------------|------------------|-----------------------------------|------------|  
+| LC01             | Submit modal form        | Complete fields  | Campaign created and awaits approval | Pass       |  
+
+**Screenshot to Insert**:  
+- **Figure 4.5**: Launch Campaign Modal (Show filled form and submission).  
+
+**Table 4.9: Invest Module + Paynow**  
+
+| **Test Case ID** | **Description**                | **Data**         | **Expected Result**               | **Result** |  
+|------------------|--------------------------------|------------------|-----------------------------------|------------|  
+| Invest01         | Invest using EcoCash test number | 0777777777      | Redirect to Paynow, NFT minted    | Pass       |  
+
+**Screenshot to Insert**:  
+- **Figure 4.6**: Investment modal and Paynow redirect (Show payment flow).  
+- **Figure 4.7**: NFT minted view + OpenSea link (Show NFT metadata).  
+
+**Table 4.10: Admin Dashboard Approvals**  
+
+| **Test Case ID** | **Description**          | **Data**            | **Expected Result**       | **Result** |  
+|------------------|--------------------------|---------------------|---------------------------|------------|  
+| Admin01          | Approve Campaign         | Pending campaign    | Campaign becomes visible   | Pass       |  
+| Admin02          | Reject User              | Unverified user     | User marked as rejected    | Pass       |  
+
+**Screenshot to Insert**:  
+- **Figure 4.8**: Admin campaign approval section (Show pending campaigns list).  
+
+---
+
+### **4.4 Implementation Plan**  
+
+**Table 4.11: Implementation Plan**  
+
+| **Strategy**         | **Activity**                          | **Persons Involved**       | **Duration** |  
+|----------------------|---------------------------------------|----------------------------|--------------|  
+| Deployment           | Setup and push to live server         | Developer                  | 1 day        |  
+| Paynow Integration   | Test mode + go live                   | Developer + Paynow         | 2 days       |  
+| KYC + Wallet UX      | UI walkthroughs                       | Developer + QA             | 2 days       |  
+| Monitoring           | Live bug fixing                       | Developer                  | Ongoing      |  
+
+---
+
+### **4.5 Findings & Drawbacks**  
+
+#### **Successes**:  
+- Seamless blockchain + fiat integration.  
+- NFTs minted and viewable on OpenSea.  
+- Campaign funding locks after goal met.  
+
+#### **Issues Encountered**:  
+- Paynow test mode errors (invalid numbers, auth email mismatch).  
+- NFTs not showing on mobile MetaMask without manual import.  
+- Campaign modal failed when hidden fields remained required.  
+
+**Screenshot to Insert**:  
+- **Figure 4.9**: System flow diagram or DB architecture (Show data flow).  
+
+---
+
+### **4.6 Evaluation & Interpretation**  
+- System passed **20+ end-to-end test cases**.  
+- Realistic investor flow tested:  
+  - Paynow success → auto minting → DB write.  
+  - Rejected campaigns not shown publicly.  
+- Admin can ban/unban users/campaigns.  
+
+---
+
+### **4.7 Recommendations**  
+- Add **auto withdrawal** logic for creators.  
+- Support **multi-chain** (e.g., Polygon).  
+- Include an **analytics module** (investor trends).  
+
+**Screenshot to Insert**:  
+- **Figure 4.10**: Profile page showing wallet address + KYC status (Show user dashboard).  
+
+---
+
+### **4.8 Screenshot Guide**  
+| **Figure**  | **Description**                                  | **Where to Insert**          |  
+|-------------|-------------------------------------------------|------------------------------|  
+| 4.1         | Home Page of the DApp                           | Section 4.1 (System Overview)|  
+| 4.2         | Login with verified user                        | Table 4.5 (Login Module)     |  
+| 4.3         | Signup Modal Form                               | Table 4.6 (Signup Module)    |  
+| 4.4         | Upload KYC form in Profile page                 | Table 4.7 (KYC Upload)       |  
+| 4.5         | Launch Campaign Modal                           | Table 4.8 (Launch Campaign)  |  
+| 4.6         | Investment modal and Paynow redirect            | Table 4.9 (Invest Module)    |  
+| 4.7         | NFT minted view + OpenSea link                  | Table 4.9 (Invest Module)    |  
+| 4.8         | Admin campaign approval section                 | Table 4.10 (Admin Dashboard) |  
+| 4.9         | System flow diagram or DB architecture          | Section 4.5 (Findings)       |  
+| 4.10        | Profile page showing wallet address + KYC status| Section 4.7 (Recommendations)|  
+
+---
+
+### **4.9 Code Snippets**  
+**Example: NFT Minting Logic**  
+```javascript
+const tx = await contract.mintInvestmentNFT(
+  walletAddress,
+  metadata.symbol,
+  metadata.name,
+  metadataURI,
+  amount,
+  { gasLimit: gasEstimate + 50000n, gasPrice }
+);
+```
+**Screenshot to Insert**:  
+- **Figure 4.11**: Code snippet for NFT minting (Place in Section 4.5 or 4.6).  
+
+---
+
+This document is **ready for submission**. Ensure all screenshots are inserted as indicated, and tables are formatted correctly. Let me know if you need further refinements! 🚀

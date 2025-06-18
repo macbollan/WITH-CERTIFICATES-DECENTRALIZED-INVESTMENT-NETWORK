@@ -890,7 +890,7 @@
                         
                         <div class="d-grid">
                             <button type="submit" class="btn btn-success btn-lg">
-                                <i class="bi bi-currency-dollar"></i> Confirm Investment
+                                <i class="bi bi-currency-dollar" onclick="submitInvestmentForm()"></i> Confirm Investment
                             </button>
                         </div>
                     </form>
@@ -930,27 +930,13 @@
 </div>
 
 <!-- Spinner Modal -->
-<div class="modal fade" id="spinnerModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="processingModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content bg-light text-center p-5">
       <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
-      <h5>Please wait while we confirm your investment...</h5>
-    </div>
-  </div>
-</div>
-
-<!-- Payment Pending Modal -->
-<div class="modal fade" id="paymentPendingModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content text-center py-4">
-      <div class="modal-body">
-        <div class="spinner-border text-primary mb-3" role="status"></div>
-        <h5 class="mb-2">Waiting for Payment...</h5>
-        <p class="small text-muted mb-3">
-          Your payment request was sent.<br> Please authorize it on your phone.
-        </p>
-        <button class="btn btn-outline-danger btn-sm" onclick="cancelInvestment()">Cancel</button>
-      </div>
+      <h5>Please wait while we initiate your investment...</h5>
+      <p class="small text-muted">Do not refresh or close this tab.</p>
+      <button class="btn btn-sm btn-outline-danger mt-3" onclick="cancelPendingInvestment()">Cancel</button>
     </div>
   </div>
 </div>
@@ -1334,33 +1320,16 @@ function validateCampaignForm() {
     return true;
 }
 
-function cancelInvestment() {
-  fetch('/payment/cancel', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
-  }).then(() => {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('paymentPendingModal'));
-    if (modal) modal.hide();
-    alert("Investment canceled.");
-    location.reload();
-  });
+function submitInvestmentForm() {
+  const modal = new bootstrap.Modal(document.getElementById('processingModal'));
+  modal.show();
+
+  document.getElementById('investmentForm').submit();
 }
 
-if (paymentMethod !== 'crypto') {
-  e.preventDefault();
-  const modal = bootstrap.Modal.getInstance(document.getElementById('investModal'));
-  if (modal) modal.hide();
-
-  const pendingModal = new bootstrap.Modal(document.getElementById('paymentPendingModal'));
-  pendingModal.show();
-
-  // Optionally auto-start poll or wait
-  setTimeout(() => {
-    checkAndMintInvestment(); // ⬅️ Your existing logic
-  }, 30000); // Wait 30s or user-triggered
+function cancelPendingInvestment() {
+  window.location.href = '/campaigns'; // or custom cancel route
 }
-
-
     </script>
 
 <%- include("partials/footer") -%>
