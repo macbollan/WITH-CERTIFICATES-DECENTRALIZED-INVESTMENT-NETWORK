@@ -195,4 +195,15 @@ Absolutely. Here's a **comprehensive list of all system functionalities** your d
 
 ---
 
-If you want, I can also export this to a **PDF** or **Word doc** for your documentation appendix or include it in your final report write-up. Let me know.
+check if user has wallet before invest
+remove barned, from displaying and if user disallow investing
+do campaigns do KYC
+notify barned user. 
+notify barned campaign
+forgot password
+make sure all CDNs are live
+CLOUD MONGODB
+INSUFFICIENT BALANCE AND OTHERS DOES NOT MINT.
+
+
+thank you for your effort, but you document doesn't have nearly as much info as in the pdf i provided. you don't have any paragraphs. you tasted very few modules. you don't have detailed information some topics are missing and have barely write ups. let's do this :ok for each topic or heading on the pdf l provided, there should be content of my own. im saying copy exactly the document i provided on the headings and topics but change the content to be mine. but dont copy the modules on the test plan and a few heading tylored to that project maybe 1 or 2. pertent a if you tested or testing whatever format is in the provided document and write ALL the content. for the test plan tables do these modules:  

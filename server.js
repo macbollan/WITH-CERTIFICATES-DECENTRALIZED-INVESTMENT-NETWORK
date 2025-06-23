@@ -26,8 +26,8 @@ const imagekit = new ImageKit({
 const paynow = new Paynow(
   process.env.PAYNOW_INTEGRATION_ID,
   process.env.PAYNOW_INTEGRATION_KEY,
-  "https://760f-196-4-80-2.ngrok-free.app/paynow/result", // for server-to-server
-  "https://760f-196-4-80-2.ngrok-free.app/payment/status" // for user redirect
+  "https://tasty-humans-arrive.loca.lt/paynow/result", // for server-to-server
+  "https://tasty-humans-arrive.loca.lt/payment/status" // for user redirect
 );
 
 
@@ -425,14 +425,23 @@ app.post("/profile/save-wallet", isLoggedIn, async (req, res) => {
   }
 });
 
+
 // Campaign routes
 app.get("/campaigns", async function (req, res) {
   try {
-    const campaigns = await Campaign.find().populate({
+    const campaigns = await Campaign.find({ 
+      isApproved: true,
+      isRejected: false,
+      status: { $ne: "banned" }
+    }).populate({
       path: "owner",
-      select: "username surname profilePicture kycStatus"
+      select: "username surname profilePicture kycStatus isBanned"
     });
-    res.render("campaigns.ejs", { campaigns: campaigns, currentUser: req.user });
+    
+    res.render("campaigns.ejs", { 
+      campaigns: campaigns, 
+      currentUser: req.user 
+    });
   } catch (err) {
     console.error(err);
     req.flash("error", "Failed to load campaigns");
@@ -458,7 +467,7 @@ app.get("/campaigns/:id", async (req, res) => {
       })
       .populate({
         path: "owner",
-        select: "username surname profilePicture kycStatus"
+        select: "username surname profilePicture kycStatus isBanned"
       });
 
     if (!campaign) {
@@ -1329,6 +1338,27 @@ app.post("/admin/users/ban/:userId", isLoggedIn, async (req, res) => {
     res.redirect("/admin/dashboard");
   }
 });
+
+// DELETE route for deleting a campaign
+app.delete('/campaigns/:id', async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+
+    if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
+
+    // Optional: check if currentUser is the campaign owner
+    if (!req.user || !campaign.owner.equals(req.user._id)) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    await Campaign.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: 'Deleted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 
 app.delete('/admin/campaign/:id', async (req, res) => {
   const { id } = req.params;

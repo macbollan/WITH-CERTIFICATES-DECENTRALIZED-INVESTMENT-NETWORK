@@ -394,6 +394,24 @@
                                   <i class="bi bi-exclamation-circle me-1"></i> Not Verified
                                 </span>
                               <% } %>
+
+                                     <% if (currentUser.isBanned === true || campaign.owner.isBanned === 'true') { %>
+                                        <span class="badge bg-danger me-2">
+                                            <i class="bi bi-slash-circle me-1"></i> Owner Banned
+                                        </span>
+                                        <% } else if (currentUser.kycStatus === 'verified') { %>
+                                        <span class="badge bg-success me-2">
+                                            <i class="bi bi-patch-check-fill me-1"></i> Verified
+                                        </span>
+                                        <% } else if (currentUser.kycStatus === 'pending' ) { %>
+                                        <span class="badge bg-warning text-dark me-2">
+                                            <i class="bi bi-hourglass-split me-1"></i> KYC Pending
+                                        </span>
+                                        <% } else { %>
+                                        <span class="badge bg-secondary me-2">
+                                            <i class="bi bi-exclamation-circle me-1"></i> Not Verified
+                                        </span>
+                                        <% } %>
                               
                             <span class="badge bg-light text-dark">
                                 Member since <%= new Date(currentUser.dateCreated).getFullYear() %>
@@ -428,8 +446,13 @@
         <!-- KYC Section -->
 <div class="kyc-section mt-5 animate__animated animate__fadeInUp">
     <h4><i class="bi bi-shield-check me-2"></i>KYC Verification</h4>
-  
-    <% if (currentUser.kycStatus === 'verified') { %>
+
+    <% if (currentUser.isBanned) { %>
+    <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <i class="bi bi-slash-circle me-2 fs-5"></i>
+        <div>Your account has been <strong>banned</strong>. Please contact support for further assistance.</div>
+    </div>
+    <% } else if (currentUser.kycStatus === 'verified') { %>
       <div class="alert alert-success d-flex align-items-center" role="alert">
         <i class="bi bi-patch-check-fill me-2 fs-5"></i>
         <div>Your KYC status is <strong>Verified</strong>.</div>
