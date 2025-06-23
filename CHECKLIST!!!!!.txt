@@ -195,12 +195,10 @@ Absolutely. Here's a **comprehensive list of all system functionalities** your d
 
 ---
 
-check if user has wallet before invest
+
 remove barned, from displaying and if user disallow investing
-do campaigns do KYC
-notify barned user. 
-notify barned campaign
-forgot password
+
+
 make sure all CDNs are live
 CLOUD MONGODB
 INSUFFICIENT BALANCE AND OTHERS DOES NOT MINT.

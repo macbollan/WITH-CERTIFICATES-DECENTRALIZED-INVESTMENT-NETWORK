@@ -15,6 +15,8 @@ const { Paynow } = require('paynow');
 require("dotenv").config();
 const MongoStore = require("connect-mongo");
 const axios = require("axios");
+const crypto = require('crypto');
+const nodemailer = require("nodemailer");
 
 // ImageKit setup
 const imagekit = new ImageKit({
@@ -549,7 +551,7 @@ app.post("/campaigns/create", isLoggedIn, upload.single('image'), async (req, re
         const campaign = new Campaign(campaignData);
         await campaign.save();
 
-        req.flash("success", "Campaign created successfully!");
+        req.flash("success", "Campaign created successfully! Go to Profile, Upload documents and Await Approval!");
         return res.redirect(`/campaigns/${campaign._id}`);
         
     } catch (error) {
@@ -656,7 +658,7 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
     }
 
     if (!campaign || !user || !user.walletAddress) {
-      req.flash("error", "Invalid campaign or user data.");
+      req.flash("error", "Invalid campaign or user data. Please Add Your Crypto Wallet First");
       return res.redirect(`/campaigns/${id}`);
     }
     
@@ -1506,6 +1508,93 @@ app.use((err, req, res, next) => {
   }
   console.error("🔥 Unhandled Error:", err);
 });
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+// Forgot Password Form
+app.get("/forgot-password", (req, res) => {
+  res.render("forgot-password");
+});
+
+// Forgot Password Submission
+app.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    req.flash("error", "No account with that email exists");
+    return res.redirect("/forgot-password");
+  }
+
+  // Generate reset token
+  const token = crypto.randomBytes(20).toString('hex');
+  user.resetPasswordToken = token;
+  user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+  await user.save();
+
+  // Send email
+  const transporter = nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const resetUrl = `http://${req.headers.host}/reset-password/${token}`;
+  const mailOptions = {
+    to: user.email,
+    subject: 'Password Reset',
+    text: `Click the link to reset your password: ${resetUrl}`,
+  };
+
+  transporter.sendMail(mailOptions, (err) => {
+    if (err) {
+      req.flash("error", "Error sending email");
+      console.log(err);
+      return res.redirect("/forgot-password");
+    }
+    req.flash("success", "Password reset email sent");
+    res.redirect("/login");
+  });
+});
+
+// Reset Password Form
+app.get("/reset-password/:token", async (req, res) => {
+  const user = await User.findOne({
+    resetPasswordToken: req.params.token,
+    resetPasswordExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    req.flash("error", "Invalid or expired token");
+    return res.redirect("/forgot-password");
+  }
+
+  res.render("reset-password", { token: req.params.token });
+});
+
+// Reset Password Submission
+app.post("/reset-password/:token", async (req, res) => {
+  const user = await User.findOne({
+    resetPasswordToken: req.params.token,
+    resetPasswordExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    req.flash("error", "Invalid or expired token");
+    return res.redirect("/forgot-password");
+  }
+
+  // Set new password
+  await user.setPassword(req.body.password);
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+
+  req.flash("success", "Password reset successful");
+  res.redirect("/login");
+});
+///////////////////////////////////////////////////////////////////////////////////////////
 
 // Start Server
 app.listen(80, function () {
