@@ -196,7 +196,6 @@ Absolutely. Here's a **comprehensive list of all system functionalities** your d
 ---
 
 
-remove barned, from displaying and if user disallow investing
 
 
 make sure all CDNs are live
