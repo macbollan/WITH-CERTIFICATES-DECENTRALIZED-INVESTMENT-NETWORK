@@ -28,8 +28,8 @@ const imagekit = new ImageKit({
 const paynow = new Paynow(
   process.env.PAYNOW_INTEGRATION_ID,
   process.env.PAYNOW_INTEGRATION_KEY,
-  "https://tasty-humans-arrive.loca.lt/paynow/result", // for server-to-server
-  "https://tasty-humans-arrive.loca.lt/payment/status" // for user redirect
+  "https://with-certificates-decentralized.onrender.com//paynow/result", // for server-to-server
+  "https://with-certificates-decentralized.onrender.com//payment/status" // for user redirect
 );
 
 
@@ -42,8 +42,8 @@ if (process.env.NODE_ENV !== 'production') {
 const { ethers } = require("ethers");
 const pinataSDK = require('@pinata/sdk');
 
-console.log("✅ PINATA_API_KEY:", process.env.PINATA_API_KEY);
-console.log("✅ PINATA_API_SECRET:", process.env.PINATA_API_SECRET);
+console.log(" PINATA_API_KEY:", process.env.PINATA_API_KEY);
+console.log(" PINATA_API_SECRET:", process.env.PINATA_API_SECRET);
 
 
 if (!process.env.PINATA_API_KEY || !process.env.PINATA_API_SECRET) {
@@ -58,9 +58,9 @@ const pinata = new pinataSDK(
 (async () => {
   try {
     await pinata.testAuthentication();
-    console.log('✅ Pinata authentication successful');
+    console.log(' Pinata authentication successful');
   } catch (err) {
-    console.error('❌ Pinata authentication failed:', err.message);
+    console.error(' Pinata authentication failed:', err.message);
   }
 })();
 
@@ -670,9 +670,9 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
 
     // Create a unique reference
     const reference = `INV-${Date.now()}-${user._id.toString().slice(-6)}`;
-    console.log("🧾 Payment reference:", reference);
-    console.log("📞 Mobile used:", mobile);
-    console.log("📱 Method:", paymentMethod);
+    console.log(" Payment reference:", reference);
+    console.log(" Mobile used:", mobile);
+    console.log(" Method:", paymentMethod);
 
     // Create Paynow payment object
     const payment = paynow.createPayment(reference, "macbtee@gmail.com");
@@ -695,7 +695,7 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
 
     // Send to Paynow
     const response = await paynow.sendMobile(payment, mobile, paymentMethod);
-    console.log("📡 Paynow API response:", response);
+    console.log(" Paynow API response:", response);
 
     if (response.success) {
       // Save poll URL
@@ -719,20 +719,20 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
 
       //await tempInvestment.save();
 
-      console.log("✅ Poll URL saved:", response.pollUrl);
-      console.log("🔗 Redirecting to Paynow:", response.redirectUrl);
+      console.log(" Poll URL saved:", response.pollUrl);
+      console.log(" Redirecting to Paynow:", response.redirectUrl);
 
       res.redirect(`/campaigns/${campaign._id}?payment=success`);
 
       //return res.redirect(response.redirectUrl);
 
     } else {
-      console.error("❌ Paynow failed or returned no redirect URL.");
+      console.error(" Paynow failed or returned no redirect URL.");
       req.flash("error", response.error || "Payment initiation failed");
       return res.redirect(`/campaigns/${id}`);
     }
   } catch (err) {
-    console.error("🔥 Paynow initiation error:", err.message || err);
+    console.error(" Paynow initiation error:", err.message || err);
     req.flash("error", "Payment initiation failed. Please try again.");
     return res.redirect(`/campaigns/${id}`);
   }
@@ -740,12 +740,12 @@ app.post("/campaigns/:id/paynow", isLoggedIn, async (req, res) => {
 
 
 app.post("/payment/status", isLoggedIn, async (req, res) => {
-  //console.log("📩 Entered /payment/status");
+  //console.log(" Entered /payment/status");
 
 
   const investmentData = req.session.pendingInvestment;
   if (!investmentData) {
-    console.error("❌ No pending investment in session");
+    console.error(" No pending investment in session");
     return res.status(400).json({
       success: false,
       message: "No pending investment found. Please try again.",
@@ -756,8 +756,8 @@ app.post("/payment/status", isLoggedIn, async (req, res) => {
 
 
 
-//     console.log("📩 Entered /payment/status ....................................................................................");
-// console.log("📡 Paynow Status:", {
+//     console.log(" Entered /payment/status ....................................................................................");
+// console.log(" Paynow Status:", {
 //   paid: paynowStatus.paid,
 //   status: paynowStatus.status,
 //   amount: paynowStatus.amount,
@@ -765,7 +765,7 @@ app.post("/payment/status", isLoggedIn, async (req, res) => {
 // });
 
 // if (!paynowStatus.paid) {
-//   console.warn("⚠️ Paynow payment not completed or was cancelled.");
+//   console.warn(" Paynow payment not completed or was cancelled.");
 //   return res.status(400).json({
 //     success: false,
 //     message: "Payment not confirmed. Please complete the payment before proceeding."
@@ -787,7 +787,7 @@ app.post("/payment/status", isLoggedIn, async (req, res) => {
     });
 
     if (existing) {
-      console.log("ℹ️ Investment already processed.");
+      console.log("ℹ Investment already processed.");
       delete req.session.pendingInvestment;
       return res.json({
         success: true,
@@ -842,9 +842,9 @@ app.post("/payment/status", isLoggedIn, async (req, res) => {
       );
 
       ipfsImageURL = `ipfs://${pinImageRes.data.IpfsHash}`;
-      console.log("✅ IPFS image uploaded:", ipfsImageURL);
+      console.log(" IPFS image uploaded:", ipfsImageURL);
     } catch (err) {
-      console.error("⚠️ Failed to upload image to IPFS:", err.message);
+      console.error(" Failed to upload image to IPFS:", err.message);
       ipfsImageURL = campaign.image; // fallback
     }
 
@@ -874,9 +874,9 @@ app.post("/payment/status", isLoggedIn, async (req, res) => {
     );
 
     const metadataURI = `ipfs://${pinJSONRes.data.IpfsHash}`;
-    console.log("✅ Metadata pinned:", metadataURI);
+    console.log(" Metadata pinned:", metadataURI);
 
-    // 🧾 Mint NFT
+    //  Mint NFT
     const { ethers } = require("ethers");
     const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_SEPOLIA_URL);
     const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
@@ -915,7 +915,7 @@ app.post("/payment/status", isLoggedIn, async (req, res) => {
     const tokenId = parsed?.args?.tokenId?.toString();
     if (!tokenId) throw new Error("Token ID not found in receipt.");
 
-    // 💾 Save investment
+    //  Save investment
 
     const investment = new Investment({
       investor: investor._id,
@@ -931,15 +931,15 @@ app.post("/payment/status", isLoggedIn, async (req, res) => {
 
     await investment.save();
 
-    // 🛠️ Update campaign
+    //  Update campaign
     campaign.amountRaised += parseFloat(amount);
     campaign.investments.push(investment._id);
     if (campaign.amountRaised >= campaign.goalAmount) campaign.status = "funded";
     await campaign.save();
 
-    // ✅ Done
+    //  Done
     delete req.session.pendingInvestment;
-    console.log("✅ Investment finalized and NFT minted.");
+    console.log(" Investment finalized and NFT minted.");
 
     return res.json({
       success: true,
@@ -948,7 +948,7 @@ app.post("/payment/status", isLoggedIn, async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ Payment status error:", err.message);
+    console.error(" Payment status error:", err.message);
     return res.status(500).json({
       success: false,
       message: "Investment finalization failed. " + err.message,
@@ -1223,7 +1223,7 @@ app.get('/admin/dashboard', isLoggedIn, async (req, res) => {
     pendingCampaigns,
     allUsers,
     allCampaigns,
-    pendingWithdrawals // ✅ add this line
+    pendingWithdrawals //  add this line
   });
 });
 
@@ -1475,7 +1475,7 @@ app.post("/admin/withdrawals/request", isLoggedIn, async (req, res) => {
     req.flash("success", "Withdrawal request submitted to admin.");
     res.redirect(`/campaigns/${campaign._id}`);
   } catch (err) {
-    console.error("❌ Withdrawal request error:", err);
+    console.error(" Withdrawal request error:", err);
     req.flash("error", "Failed to submit withdrawal request.");
     res.redirect("/campaigns");
   }
@@ -1506,7 +1506,7 @@ app.use((err, req, res, next) => {
     console.warn("Caught CastError:", err.message);
 
   }
-  console.error("🔥 Unhandled Error:", err);
+  console.error(" Unhandled Error:", err);
 });
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
