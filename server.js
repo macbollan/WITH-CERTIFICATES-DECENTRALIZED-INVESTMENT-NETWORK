@@ -90,7 +90,7 @@ const WithdrawalRequest = require("./models/WithdrawalRequest");
 
 
 // MongoDB Connection
-mongoose.connect("mongodb://localhost/Investment_Network4", {
+mongoose.connect("mongodb+srv://nyctech002:macb@investmentnetwork.o6scueg.mongodb.net/?retryWrites=true&w=majority&appName=INVESTMENTNETWORK", {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => console.log("MongoDB Connected"))
@@ -1595,8 +1595,8 @@ app.post("/reset-password/:token", async (req, res) => {
   res.redirect("/login");
 });
 ///////////////////////////////////////////////////////////////////////////////////////////
-
+const port = process.env.PORT || 80;
 // Start Server
-app.listen(80, function () {
+app.listen(port, function () {
   console.log("App Has Started on Port 80");
 });
